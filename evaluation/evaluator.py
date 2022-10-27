@@ -43,7 +43,7 @@ class Evaluator:
                 demonstrations = []
                 while len(demonstrations) < num_demonstrations:
                     try:
-                        demonstrations.append(next(demo for demo in task.data
+                        demonstrations.append(next(demo for demo in reversed(task.data)
                                                    if demo[0] != sample[0] and demo not in demonstrations
                                                    and selection_criterion(sample, demo, demo_selection_strategy)))
                     except StopIteration:

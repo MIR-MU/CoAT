@@ -1,24 +1,22 @@
 from typing import Optional
 
-import torch
 from adaptor.evaluators.generative import ROUGE
-from datasets import Dataset
-from transformers import PreTrainedTokenizer
+from transformers import PreTrainedTokenizer, PreTrainedModel
 
 from evaluation.evaluator import Evaluator
-from evaluation.tasks.en.qa import PrimedQATask
+from evaluation.tasks.task import Task
 
 
-class QADemonstrationsSensitivityROUGE(ROUGE):
+class InformativenessDifferenceROUGE(ROUGE):
 
-    def __init__(self, dataset: Dataset, lang: str,
+    def __init__(self, task: Task,
                  num_demonstrations: int = 3, firstn: Optional[int] = None, **kwargs):
         super().__init__(**kwargs)
-        self.task = PrimedQATask(dataset, lang)
+        self.task = task
         self.num_demonstrations = num_demonstrations
         self.firstn = firstn
 
-    def __call__(self, model: torch.nn.Module, tokenizer: PreTrainedTokenizer, _) -> float:
+    def __call__(self, model: PreTrainedModel, tokenizer: PreTrainedTokenizer, _) -> float:
         expected, actual_random = Evaluator.collect_predictions(model, tokenizer,
                                                                 self.task, self.num_demonstrations, self.firstn,
                                                                 demo_selection_strategy="random")

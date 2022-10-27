@@ -1,5 +1,6 @@
 from typing import Dict, Any
 
+from altair import load_dataset
 from datasets import Dataset
 
 from evaluation.tasks.task import Task
@@ -17,11 +18,14 @@ class PrimedQATask(Task):
                 if not sample["question"].startswith("To")
                 else " ".join(sample["question"].split()[:2]))
 
-    def __init__(self, dataset: Dataset, lang_id: str):
+    def __init__(self, lang_id: str):
         super().__init__()
         self.lang_id = lang_id
-        # dataset = load_dataset(*hf_dataset_identifiers)[hf_dataset_split]
+
+        dataset = load_dataset("adversarial_qa", "adversarialQA")
+        dataset_eval = dataset["validation"].filter(lambda entry: len(entry["context"]) < 2000)
+        dataset_eval = dataset_eval.select(range(50))
 
         self.data = [(self._construct_qa_prompt(sample["question"], sample["context"]),
                       sample["answers"]["text"][0],
-                      self._informative_factor(sample)) for sample in dataset]
+                      self._informative_factor(sample)) for sample in dataset_eval]
