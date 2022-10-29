@@ -2,7 +2,7 @@ import torch
 from datasets import load_dataset
 from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
 
-from evaluation.sensitivity_evaluator import InformativenessDifferenceROUGE
+from evaluation.sensitivity_evaluator import RougeInfoDIff
 
 # TODO: aren't SQuAD examples more informative?
 # dataset = load_dataset("squad")
@@ -12,7 +12,7 @@ from evaluation.tasks.en.qa import PrimedQATask
 # task = PrimedQATask("en")
 task = GLUEDiagnostics("en")
 
-evaluator = InformativenessDifferenceROUGE(task)
+evaluator = RougeInfoDIff(task)
 
 # model_path = "gaussalgo/mt5-base-priming-QA_en-cs"
 # model_path = "allenai/tk-instruct-3b-def-pos"

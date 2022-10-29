@@ -1,7 +1,6 @@
 from typing import Dict, Any
 
-from altair import load_dataset
-from datasets import Dataset
+from datasets import load_dataset
 
 from evaluation.tasks.task import Task
 from training.priming_objective import priming_formats

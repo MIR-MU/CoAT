@@ -7,7 +7,7 @@ from evaluation.evaluator import Evaluator
 from evaluation.tasks.task import Task
 
 
-class InformativenessDifferenceROUGE(ROUGE):
+class RougeInfoDIff(ROUGE):
 
     def __init__(self, task: Task,
                  num_demonstrations: int = 3, firstn: Optional[int] = None, **kwargs):
