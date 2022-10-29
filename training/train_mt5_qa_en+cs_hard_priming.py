@@ -8,11 +8,14 @@ from adaptor.schedules import ParallelSchedule
 from adaptor.utils import AdaptationArguments, StoppingStrategy
 from datasets import load_dataset
 
+from evaluation.sensitivity_evaluator import RougeInfoDIff
+from evaluation.tasks.en.glue_diagnostics import GLUEDiagnostics
+from evaluation.tasks.en.qa import PrimedQATask
 from evaluation.tasks.en.superglue import all_task_classes
 from priming_objective import Priming
 from training.sglue_evaluators import TaskROUGE
 
-training_arguments = AdaptationArguments(output_dir="train_dir",
+training_arguments = AdaptationArguments(output_dir="train_dir_hard_large",
                                          learning_rate=5e-5,  # we set LR=2e-4 for pre-training experiments
                                          # stopping_strategy=StoppingStrategy.ALL_OBJECTIVES_CONVERGED,
                                          stopping_strategy=StoppingStrategy.ALL_OBJECTIVES_CONVERGED,
@@ -44,15 +47,21 @@ def _construct_priming_prompt(previous_examples: List[str], current_example: str
 
 
 # lang_module = LangModule("google/mt5-small")  # TODO set
-# lang_module = LangModule("gaussalgo/mt5-base-priming-QA_en-cs")  # TODO set
-lang_module = LangModule("google/mt5-base")
-# lang_module = LangModule("google/mt5-large")
+# lang_module = LangModule("gaussalgo/mt5-base-priming-QA_en-cs")
+# lang_module = LangModule("google/mt5-base")
+lang_module = LangModule("google/mt5-large")
 
 # priming
 per_type_examples = {}
 
 qa_en = load_dataset("adversarial_qa", "adversarialQA")
 qa_train = qa_en["train"].filter(lambda entry: len(entry["context"]) < 2000)
+
+qa_task = PrimedQATask("en")
+qa_diff_evaluator = RougeInfoDIff(qa_task)
+
+glue_task = GLUEDiagnostics("en")
+glue_diff_evaluator = RougeInfoDIff(qa_task)
 
 
 def _get_en_squad_categories(data) -> List[str]:
@@ -73,7 +82,7 @@ q_answering_en = Priming(lang_module,
                          train_question_categories=_get_en_squad_categories(qa_train),
                          val_question_categories=_get_en_squad_categories(qa_en["validation"])[-eval_examples:],
                          batch_size=1,
-                         val_evaluators=val_metrics + superglue_metrics,
+                         val_evaluators=val_metrics + superglue_metrics + [qa_diff_evaluator, glue_diff_evaluator],
                          # val_evaluators=val_metrics,
                          source_lang_id="en",
                          objective_id="AQA-en")
