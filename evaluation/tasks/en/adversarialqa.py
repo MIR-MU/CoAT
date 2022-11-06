@@ -6,7 +6,7 @@ from evaluation.tasks.task import Task
 from training.priming_objective import priming_formats
 
 
-class PrimedQATask(Task):
+class AdversarialQATask(Task):
 
     def _construct_qa_prompt(self, question: str, context: str) -> str:
         return priming_formats["QA"][self.lang_id] % (question, context)

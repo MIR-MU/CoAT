@@ -10,7 +10,7 @@ from datasets import load_dataset
 
 from evaluation.sensitivity_evaluator import RougeInfoDIff
 from evaluation.tasks.en.glue_diagnostics import GLUEDiagnostics
-from evaluation.tasks.en.qa import PrimedQATask
+from evaluation.tasks.en.adversarialqa import AdversarialQATask
 from evaluation.tasks.en.superglue import all_task_classes
 from priming_objective import Priming
 from training.sglue_evaluators import TaskROUGE
@@ -57,11 +57,11 @@ per_type_examples = {}
 qa_en = load_dataset("adversarial_qa", "adversarialQA")
 qa_train = qa_en["train"].filter(lambda entry: len(entry["context"]) < 2000)
 
-qa_task = PrimedQATask("en")
+qa_task = AdversarialQATask("en")
 qa_diff_evaluator = RougeInfoDIff(qa_task)
 
 glue_task = GLUEDiagnostics("en")
-glue_diff_evaluator = RougeInfoDIff(qa_task)
+glue_diff_evaluator = RougeInfoDIff(glue_task)
 
 
 def _get_en_squad_categories(data) -> List[str]:

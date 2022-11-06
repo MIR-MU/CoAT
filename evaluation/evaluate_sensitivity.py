@@ -7,9 +7,9 @@ from evaluation.sensitivity_evaluator import RougeInfoDIff
 # TODO: aren't SQuAD examples more informative?
 # dataset = load_dataset("squad")
 from evaluation.tasks.en.glue_diagnostics import GLUEDiagnostics
-from evaluation.tasks.en.qa import PrimedQATask
+from evaluation.tasks.en.adversarialqa import AdversarialQATask
 
-# task = PrimedQATask("en")
+# task = AdversarialQATask("en")
 task = GLUEDiagnostics("en")
 
 evaluator = RougeInfoDIff(task)
