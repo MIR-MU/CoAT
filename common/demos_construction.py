@@ -12,7 +12,7 @@ def selection_criterion(predicted_example: Tuple[str, str, Union[str, List[str]]
         cand_cat = candidate_demonstration[2]
         assert type(pred_cat) == type(cand_cat), "Informativeness factor of all samples must be of the same type."
         if isinstance(pred_cat, list):
-            return any(pred_c in pred_cat for pred_c in pred_cat)
+            return any(cand_c in pred_cat for cand_c in cand_cat)
         else:
             return predicted_example[2] == candidate_demonstration[2]
     else:

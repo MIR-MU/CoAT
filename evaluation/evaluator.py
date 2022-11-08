@@ -29,7 +29,10 @@ class Evaluator:
         return evaluations
 
     @staticmethod
-    def collect_predictions(model: PreTrainedModel, tokenizer: PreTrainedTokenizer, task: Task, num_demonstrations: int,
+    def collect_predictions(model: PreTrainedModel,
+                            tokenizer: PreTrainedTokenizer,
+                            task: Task,
+                            num_demonstrations: int,
                             firstn: Optional[int] = None,
                             demo_selection_strategy: str = config.demo_selection_strategy):
         expected_texts = []
