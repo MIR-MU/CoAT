@@ -26,16 +26,17 @@ class InfoDiffEvaluatorBase(abc.ABC):
         pass
 
     def __call__(self, model: PreTrainedModel, tokenizer: PreTrainedTokenizer, _) -> Tuple[float, float]:
-        expected, actual_random = Evaluator.collect_predictions(model, tokenizer,
-                                                                self.task, self.num_demonstrations, self.firstn,
-                                                                demo_selection_strategy="random")
-        random_performance = self._compute(expected, actual_random)
         # print("Model's performance in random selection: %s" % random_performance)
-
-        expected, actual_informative = Evaluator.collect_predictions(model, tokenizer,
-                                                                     self.task, self.num_demonstrations, self.firstn,
-                                                                     demo_selection_strategy="cluster-random")
+        # there's always less samples in 'informative' group
+        expected, actual_informative, eval_set = Evaluator.collect_predictions(model, tokenizer, self.task,
+                                                                               self.num_demonstrations, self.firstn,
+                                                                               demo_selection_strategy="cluster-random")
         informative_performance = self._compute(expected, actual_informative)
+
+        expected, actual_random, _ = Evaluator.collect_predictions(model, tokenizer, self.task,
+                                                                   self.num_demonstrations, self.firstn,
+                                                                   demo_selection_strategy="random", eval_set=eval_set)
+        random_performance = self._compute(expected, actual_random)
 
         # print("Model's performance in informative selection: %s" % informative_performance)
 

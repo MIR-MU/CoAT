@@ -1,5 +1,5 @@
 import itertools
-from typing import Iterable, Dict, List, Union, Optional
+from typing import Iterable, Dict, List, Union, Optional, Tuple
 
 from tqdm import tqdm
 from transformers import AutoModelForSeq2SeqLM, PreTrainedTokenizer, PreTrainedModel
@@ -34,10 +34,15 @@ class Evaluator:
                             task: Task,
                             num_demonstrations: int,
                             firstn: Optional[int] = None,
-                            demo_selection_strategy: str = config.demo_selection_strategy):
+                            demo_selection_strategy: str = config.demo_selection_strategy,
+                            eval_set: Optional[List[Tuple[str, str, str]]] = None
+                            ) -> Tuple[List[str], List[str], List[Tuple[str, str, str]]]:
         expected_texts = []
         predicted_texts = []
-        num_samples = firstn if firstn is not None else config.firstn if config.firstn is not None else len(task.data)
+
+        eval_set_in = task.data if eval_set is None else eval_set
+        eval_set_out = []
+        num_samples = firstn if firstn is not None else config.firstn if config.firstn is not None else len(eval_set_in)
 
         skipped = 0
         for batch_offset in tqdm(range(0, num_samples, config.batch_size), desc="Evaluating %s" % task):
@@ -57,13 +62,15 @@ class Evaluator:
                 if not len(demonstrations) == num_demonstrations:
                     skipped += 1
                     continue
+                eval_set_out.append(sample)
                 input_texts.append(construct_sample(demonstrations, sample))
                 targets.append(sample[1])
             try:
                 encodings = tokenizer(input_texts, return_tensors="pt", padding=True).to(model.device)
             except IndexError:
-                logger.warning("Skipping input text %s" % input_texts)
+                # logger.warning("Skipping sample %s" % input_texts)
                 continue
+
             predictions = model.generate(**encodings)
             pred_batch = tokenizer.batch_decode(predictions, skip_special_tokens=True)
 
@@ -72,7 +79,7 @@ class Evaluator:
 
         logger.warning("%s: Skipped samples: %s out of total: %s" % (task, skipped, num_samples))
 
-        return expected_texts, predicted_texts
+        return expected_texts, predicted_texts, eval_set_out
 
     @staticmethod
     def evaluate_task(model: AutoModelForSeq2SeqLM,
