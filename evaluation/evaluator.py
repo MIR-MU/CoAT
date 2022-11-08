@@ -7,6 +7,9 @@ from transformers import AutoModelForSeq2SeqLM, PreTrainedTokenizer, PreTrainedM
 from common.demos_construction import selection_criterion, construct_sample
 from evaluation import config
 from evaluation.tasks.task import Task, Metric
+import logging
+
+logger = logging.getLogger()
 
 
 class Evaluator:
@@ -19,7 +22,7 @@ class Evaluator:
 
         for task in tasks:
             task_eval = Evaluator.evaluate_task(model, tokenizer, task)
-            print("Task %s eval: %s" % (task, task_eval))
+            logger.warning("Task %s eval: %s" % (task, task_eval))
 
             evaluations[str(task)] = task_eval
 
@@ -48,7 +51,7 @@ class Evaluator:
                                                    and selection_criterion(sample, demo, demo_selection_strategy)))
                     except StopIteration:
                         break
-                if not demonstrations:
+                if not len(demonstrations) == num_demonstrations:
                     skipped += 1
                     continue
                 input_texts.append(construct_sample(demonstrations, sample))
@@ -56,7 +59,7 @@ class Evaluator:
             try:
                 encodings = tokenizer(input_texts, return_tensors="pt", padding=True).to(model.device)
             except IndexError:
-                print("Skipping input text %s" % input_texts)
+                logger.warning("Skipping input text %s" % input_texts)
                 continue
             predictions = model.generate(**encodings)
             pred_batch = tokenizer.batch_decode(predictions, skip_special_tokens=True)
@@ -64,7 +67,7 @@ class Evaluator:
             expected_texts.extend(targets)
             predicted_texts.extend(pred_batch)
 
-        print("%s: Skipped samples: %s out of total: %s" % (task, skipped, num_samples))
+        logger.warning("%s: Skipped samples: %s out of total: %s" % (task, skipped, num_samples))
 
         return expected_texts, predicted_texts
 

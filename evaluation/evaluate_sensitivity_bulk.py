@@ -11,6 +11,7 @@ from evaluation.tasks.en.glue_diagnostics import GLUEDiagnostics
 import argparse
 
 from evaluation.tasks.en.openbookqa import OpenBookQATask
+from evaluation.tasks.en.r4c_hotpotqa import R4CHotpotQATask
 
 parser = argparse.ArgumentParser()
 
@@ -18,7 +19,7 @@ parser.add_argument("--model_names_or_paths", default="gaussalgo/mt5-base-primin
                     help="Coma-separated list of evaluated models' identifiers")
 parser.add_argument("--eval_dataset_promptsource_id", default="glue/mnli", type=str,
                     help="Evaluation dataset. Must be one of the implemented datasets: "
-                         "'glue/mnli', 'openbookqa/additional'")
+                         "'glue/mnli', 'openbookqa/additional', 'hotpot_qa/fullwiki'")
 parser.add_argument("--template_names", default=None, type=str,
                     help="Names of the templates to evaluate with")
 parser.add_argument("--metric", default="ROUGE", type=str,
@@ -37,7 +38,11 @@ for model_name_or_path in args.model_names_or_paths.split(","):
     if args.template_names is not None:
         eval_templates = args.template_names
     else:
-        eval_templates = DatasetTemplates(args.eval_dataset_promptsource_id).all_template_names
+        if args.eval_dataset_promptsource_id == 'hotpot_qa/fullwiki':
+            # only two templates for hotpot_qa require answering questions, others are for different tasks
+            eval_templates = ['generate_answer_interrogative', 'generate_answer_affirmative']
+        else:
+            eval_templates = DatasetTemplates(args.eval_dataset_promptsource_id).all_template_names
 
     for template_id in eval_templates:
         template = DatasetTemplates(args.eval_dataset_promptsource_id)[template_id]
@@ -46,6 +51,8 @@ for model_name_or_path in args.model_names_or_paths.split(","):
             task = GLUEDiagnostics("en", template)
         elif args.eval_dataset_promptsource_id == "openbookqa/additional":
             task = OpenBookQATask("en", template)
+        elif args.eval_dataset_promptsource_id == 'hotpot_qa/fullwiki':
+            task = R4CHotpotQATask("en", template)
         else:
             raise ValueError("Non-implemented dataset: %s" % args.eval_dataset_promptsource_id)
 
