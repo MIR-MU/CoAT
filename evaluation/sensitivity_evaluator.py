@@ -1,11 +1,9 @@
 import abc
-from typing import Optional, Tuple, List
+import random
+from typing import Optional, Tuple, List, Union
 
-import torch
 from adaptor.evaluators.evaluator_base import EvaluatorBase
 from adaptor.evaluators.generative import ROUGE
-from adaptor.evaluators.sequence_classification import SequenceAccuracy
-from adaptor.utils import AdaptationDataset
 from transformers import PreTrainedTokenizer, PreTrainedModel
 
 from evaluation.evaluator import Evaluator
@@ -15,28 +13,50 @@ from evaluation.tasks.task import Task
 class InfoDiffEvaluatorBase(abc.ABC):
 
     def __init__(self, task: Task,
-                 num_demonstrations: int = 3, firstn: Optional[int] = None, **kwargs):
+                 num_demonstrations: int = 3, firstn: Optional[int] = None, bootstrap: bool = False, **kwargs):
         super().__init__(**kwargs)
         self.task = task
         self.num_demonstrations = num_demonstrations
         self.firstn = firstn
+        self.bootstrap = bootstrap
 
     @abc.abstractmethod
     def _compute(self, expected: List[str], actual: List[str]) -> float:
         pass
 
-    def __call__(self, model: PreTrainedModel, tokenizer: PreTrainedTokenizer, _) -> Tuple[float, float]:
+    def _compute_bootstrapped(self,
+                              expected_all: List[str],
+                              actual_all: List[str],
+                              per_round_samples: int = 50,
+                              repeats: int = 200) -> List[float]:
+        assert len(expected_all) == len(actual_all), "Prediction lists' length do not match"
+
+        evals = []
+        while len(evals) < repeats:
+            subset_idx = [random.randrange(len(expected_all)) for _ in range(per_round_samples)]
+            expected_subset = [expected_all[idx] for idx in subset_idx]
+            actual_subset = [actual_all[idx] for idx in subset_idx]
+
+            evals.append(self._compute(expected_subset, actual_subset))
+
+        return evals
+
+    def __call__(self, model: PreTrainedModel, tokenizer: PreTrainedTokenizer, _) -> Tuple[Union[float, List[float]],
+                                                                                           Union[float, List[float]]]:
         # print("Model's performance in random selection: %s" % random_performance)
         # there's always less samples in 'informative' group
         expected, actual_informative, eval_set = Evaluator.collect_predictions(model, tokenizer, self.task,
                                                                                self.num_demonstrations, self.firstn,
                                                                                demo_selection_strategy="cluster-random")
-        informative_performance = self._compute(expected, actual_informative)
-
         expected, actual_random, _ = Evaluator.collect_predictions(model, tokenizer, self.task,
                                                                    self.num_demonstrations, self.firstn,
                                                                    demo_selection_strategy="random", eval_set=eval_set)
-        random_performance = self._compute(expected, actual_random)
+        if self.bootstrap:
+            informative_performance = self._compute_bootstrapped(expected, actual_informative)
+            random_performance = self._compute_bootstrapped(expected, actual_informative)
+        else:
+            informative_performance = self._compute(expected, actual_informative)
+            random_performance = self._compute(expected, actual_random)
 
         # print("Model's performance in informative selection: %s" % informative_performance)
 
@@ -48,12 +68,12 @@ class InfoDiffEvaluatorBase(abc.ABC):
 
 class RougeInfoDIff(InfoDiffEvaluatorBase, ROUGE):
 
-    def _compute(self, expected: List[str], actual: List[str]) -> float:
+    def _compute(self, expected: List[str], actual: List[str]) -> Union[float, List[float]]:
         return self.evaluate_str(expected, actual)
 
 
 class AccuracyInfoDIff(InfoDiffEvaluatorBase, EvaluatorBase):
 
-    def _compute(self, expected: List[str], actual: List[str]) -> float:
+    def _compute(self, expected: List[str], actual: List[str]) -> Union[float, List[float]]:
         num_correct = sum([exp == act for exp, act in zip(expected, actual)])
         return num_correct / len(expected)
