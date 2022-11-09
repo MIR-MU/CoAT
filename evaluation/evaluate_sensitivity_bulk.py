@@ -33,13 +33,12 @@ results = {}
 
 max_memory_mapping = {0: "65GB", 1: "65GB"}
 
-
 for model_name_or_path in args.model_names_or_paths.split(","):
     results[model_name_or_path] = {}
     try:
         model = AutoModelForSeq2SeqLM.from_pretrained(model_name_or_path,
                                                       device_map="auto",
-                                                      max_memory=max_memory_mapping
+                                                      # max_memory=max_memory_mapping
                                                       )
     except ValueError:
         model = AutoModelForCausalLM.from_pretrained(model_name_or_path,
@@ -48,7 +47,7 @@ for model_name_or_path in args.model_names_or_paths.split(","):
                                                      )
     tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
 
-    for dataset_id in args.eval_dataset_promptsource_id.split(","):
+    for dataset_id in args.dataset_ids.split(","):
         # eval templates resolution
         if args.template_names is not None:
             eval_templates = args.template_names
@@ -86,11 +85,12 @@ for model_name_or_path in args.model_names_or_paths.split(","):
                 random_selection_perf, info_selection_perf = [random_selection_perf], [info_selection_perf]
 
             for random_selection_perf_one, info_selection_perf_one in zip(random_selection_perf, info_selection_perf):
-                print("{}\t{}\t{:.5f}\t{:.5f}\t{:.5f}".format(model_name_or_path,
-                                                              dataset_id,
-                                                              random_selection_perf_one,
-                                                              info_selection_perf_one,
-                                                              info_selection_perf_one - random_selection_perf_one))
+                print("{}\t{}\t{}\t{:.5f}\t{:.5f}\t{:.5f}".format(model_name_or_path,
+                                                                  dataset_id,
+                                                                  template_id,
+                                                                  random_selection_perf_one,
+                                                                  info_selection_perf_one,
+                                                                  info_selection_perf_one - random_selection_perf_one))
                 results[model_name_or_path][template_id] = {"random": random_selection_perf_one,
                                                             "info": info_selection_perf_one,
                                                             "diff": info_selection_perf_one - random_selection_perf_one}
