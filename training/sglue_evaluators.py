@@ -17,8 +17,9 @@ class TaskROUGE(ROUGE):
         self.firstn = firstn
 
     def __call__(self, model: torch.nn.Module, tokenizer: PreTrainedTokenizer, _) -> float:
-        expected, actual = Evaluator.collect_predictions(model, tokenizer,
-                                                         self.task, self.num_demonstrations, self.firstn)
+        expected, actual, demonstrations = Evaluator.collect_predictions(model, tokenizer,
+                                                                         self.task, self.num_demonstrations,
+                                                                         self.firstn)
         return self.evaluate_str(expected, actual)
 
     def __str__(self):
