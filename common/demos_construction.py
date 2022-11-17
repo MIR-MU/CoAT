@@ -14,7 +14,7 @@ def selection_criterion(predicted_example: Tuple[str, str, Union[str, List[str]]
         if isinstance(pred_cat, list):
             return any(cand_c in pred_cat for cand_c in cand_cat)
         else:
-            return predicted_example[2] == candidate_demonstration[2]
+            return pred_cat == cand_cat
     else:
         raise ValueError("Demo selection strategy %s unknown." % demo_selection_strategy)
 

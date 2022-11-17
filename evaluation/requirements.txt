@@ -3,3 +3,4 @@ protobuf <= 3.20.2
 promptsource
 spacy
 pandas
+accelerate

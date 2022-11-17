@@ -57,9 +57,11 @@ for model_name_or_path in args.model_names_or_paths.split(","):
                 eval_templates = ['generate_answer_interrogative', 'generate_answer_affirmative']
             else:
                 eval_templates = DatasetTemplates(dataset_id).all_template_names
+                if not eval_templates:
+                    eval_templates = ["no template"]
 
         for template_id in eval_templates:
-            template = DatasetTemplates(dataset_id)[template_id]
+            template = DatasetTemplates(dataset_id)[template_id] if template_id != "no template" else None
             # eval task resolution - done in the loop to reset its state (deduplication)
             if dataset_id == "glue/mnli":
                 task = GLUEDiagnostics("en", template)
@@ -67,6 +69,8 @@ for model_name_or_path in args.model_names_or_paths.split(","):
                 task = OpenBookQATask("en", template)
             elif dataset_id == 'hotpot_qa/fullwiki':
                 task = R4CHotpotQATask("en", template)
+            elif dataset_id == 'worldtree':
+                task = WorldTreeQA("en", template)
             else:
                 raise ValueError("Non-implemented dataset: %s" % dataset_id)
 
