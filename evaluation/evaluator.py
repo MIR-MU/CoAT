@@ -39,12 +39,14 @@ class Evaluator:
                             demo_selection_strategy: str = config.demo_selection_strategy,
                             eval_set: Optional[List[Tuple[str, str, str]]] = None
                             ) -> Tuple[List[str], List[str], List[Tuple[str, str, str]]]:
+        identifier = (model.name_or_path, task, demo_selection_strategy)
+
         cache_inputs_fpath = os.path.join(config.prediction_cache_dir,
-                                          str(task) + "%s-inputs.txt" % demo_selection_strategy)
+                                          str(task) + "%s-%s-%s-inputs.txt" % identifier)
         cache_expected_fpath = os.path.join(config.prediction_cache_dir,
-                                            str(task) + "%s-expected.txt" % demo_selection_strategy)
+                                            str(task) + "%s-%s-%s-expected.txt" % identifier)
         cache_predicted_fpath = os.path.join(config.prediction_cache_dir,
-                                             str(task) + "%s-predicted.txt" % demo_selection_strategy)
+                                             str(task) + "%s-%s-%s-predicted.txt" % identifier)
         if os.path.exists(cache_expected_fpath) and os.path.exists(cache_predicted_fpath):
             logger.warning("Reloading predictions for %s from %s, %s", task, cache_expected_fpath, cache_predicted_fpath)
 
