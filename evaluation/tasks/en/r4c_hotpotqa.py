@@ -23,6 +23,7 @@ class R4CHotpotQATask(Task):
                  template: Optional[Template] = DatasetTemplates("hotpot_qa/fullwiki")["generate_answer_affirmative"]):
         super().__init__()
         self.lang_id = lang_id
+        self.template = template
         # train split is not used, since Tk-instruct uses it
         hotpot_qa_dataset = load_dataset("hotpot_qa", "fullwiki")["validation"]
         r4c_val = pd.read_json("https://raw.githubusercontent.com/naoya-i/r4c/master/corpus/dev_csf.json")

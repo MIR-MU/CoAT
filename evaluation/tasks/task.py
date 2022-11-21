@@ -1,7 +1,7 @@
 import abc
 import os
 from enum import Enum
-from typing import Tuple, List
+from typing import Tuple, List, Union
 from urllib.request import urlopen
 
 
@@ -17,6 +17,7 @@ class Task(abc.ABC):
     url: str
     data_file: str
     data: List[Tuple[str, str, str]] = []  # input, label, category
+    template: Union[str, None] = None
 
     def __init__(self, cache_dir: str = ".") -> None:
         self.cache_dir = cache_dir
@@ -39,4 +40,4 @@ class Task(abc.ABC):
             return target_fpath
 
     def __str__(self) -> str:
-        return self.__class__.__name__
+        return self.__class__.__name__ + ("-%s" % str(self.template))
