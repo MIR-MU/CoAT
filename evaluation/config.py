@@ -1,5 +1,6 @@
 from typing import Union
 
-firstn: Union[int, None] = 100  # TODO set
+firstn: Union[int, None] = None  # TODO set
 demo_selection_strategy: str = "random"
-batch_size: int = 2
+batch_size: int = 1
+prediction_cache_dir: str = "evaluator_cache"

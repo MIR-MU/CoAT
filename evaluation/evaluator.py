@@ -1,4 +1,6 @@
 import itertools
+import os
+import pickle
 from typing import Iterable, Dict, List, Union, Optional, Tuple
 
 from tqdm import tqdm
@@ -37,47 +39,72 @@ class Evaluator:
                             demo_selection_strategy: str = config.demo_selection_strategy,
                             eval_set: Optional[List[Tuple[str, str, str]]] = None
                             ) -> Tuple[List[str], List[str], List[Tuple[str, str, str]]]:
-        expected_texts = []
-        predicted_texts = []
+        cache_inputs_fpath = os.path.join(config.prediction_cache_dir,
+                                          str(task) + "%s-inputs.txt" % demo_selection_strategy)
+        cache_expected_fpath = os.path.join(config.prediction_cache_dir,
+                                            str(task) + "%s-expected.txt" % demo_selection_strategy)
+        cache_predicted_fpath = os.path.join(config.prediction_cache_dir,
+                                             str(task) + "%s-predicted.txt" % demo_selection_strategy)
+        if os.path.exists(cache_expected_fpath) and os.path.exists(cache_predicted_fpath):
+            logger.warning("Reloading predictions for %s from %s, %s", task, cache_expected_fpath, cache_predicted_fpath)
 
-        eval_set_in = task.data if eval_set is None else eval_set
-        eval_set_out = []
-        num_samples = firstn if firstn is not None else config.firstn if config.firstn is not None else len(eval_set_in)
+            expected_texts = [l.strip() for l in open(cache_expected_fpath).readlines()]
+            predicted_texts = [l.strip() for l in open(cache_predicted_fpath).readlines()]
+            with open(cache_inputs_fpath, "rb") as out_f:
+                eval_set_out = pickle.loads(out_f.read())
+        else:
+            if not os.path.exists(config.prediction_cache_dir):
+                os.makedirs(config.prediction_cache_dir)
 
-        skipped = 0
-        for batch_offset in tqdm(range(0, num_samples, config.batch_size), desc="Evaluating %s" % task):
-            tuples_batch = task.data[batch_offset: batch_offset + config.batch_size]
-            input_texts = []
-            targets = []
+            expected_texts = []
+            predicted_texts = []
 
-            for sample in tuples_batch:
-                demonstrations = []
-                while len(demonstrations) < num_demonstrations:
-                    try:
-                        demonstrations.append(next(demo for demo in reversed(task.data)
-                                                   if demo[0] != sample[0] and demo not in demonstrations
-                                                   and selection_criterion(sample, demo, demo_selection_strategy)))
-                    except StopIteration:
-                        break
-                if not len(demonstrations) == num_demonstrations:
-                    skipped += 1
+            eval_set_in = task.data if eval_set is None else eval_set
+            eval_set_out = []
+            num_samples = firstn if firstn is not None else config.firstn \
+                if config.firstn is not None else len(eval_set_in)
+
+            skipped = 0
+            for batch_offset in tqdm(range(0, num_samples, config.batch_size), desc="Evaluating %s" % task):
+                tuples_batch = eval_set_in[batch_offset: batch_offset + config.batch_size]
+                input_texts = []
+                targets = []
+
+                for sample in tuples_batch:
+                    demonstrations = []
+                    while len(demonstrations) < num_demonstrations:
+                        try:
+                            demonstrations.append(next(demo for demo in reversed(task.data)
+                                                       if demo[0] != sample[0] and demo not in demonstrations
+                                                       and selection_criterion(sample, demo, demo_selection_strategy)))
+                        except StopIteration:
+                            break
+                    if not len(demonstrations) == num_demonstrations:
+                        skipped += 1
+                        continue
+                    eval_set_out.append(sample)
+                    input_texts.append(construct_sample(demonstrations, sample))
+                    targets.append(sample[1])
+                try:
+                    encodings = tokenizer(input_texts, return_tensors="pt", padding=True).to(model.device)
+                except IndexError:
+                    # logger.warning("Skipping sample %s" % input_texts)
                     continue
-                eval_set_out.append(sample)
-                input_texts.append(construct_sample(demonstrations, sample))
-                targets.append(sample[1])
-            try:
-                encodings = tokenizer(input_texts, return_tensors="pt", padding=True).to(model.device)
-            except IndexError:
-                # logger.warning("Skipping sample %s" % input_texts)
-                continue
 
-            predictions = model.generate(**encodings)
-            pred_batch = tokenizer.batch_decode(predictions, skip_special_tokens=True)
+                predictions = model.generate(**encodings)
+                pred_batch = tokenizer.batch_decode(predictions, skip_special_tokens=True)
 
-            expected_texts.extend(targets)
-            predicted_texts.extend(pred_batch)
+                expected_texts.extend(targets)
+                predicted_texts.extend(pred_batch)
 
-        logger.warning("%s: Skipped samples: %s out of total: %s" % (task, skipped, num_samples))
+            logger.warning("%s: Skipped samples: %s out of total: %s" % (task, skipped, num_samples))
+            logger.warning("Saving predictions for %s into %s, %s", task, cache_expected_fpath, cache_predicted_fpath)
+            with open(cache_expected_fpath, "w") as out_f:
+                out_f.writelines([t+"\n" for t in expected_texts])
+            with open(cache_predicted_fpath, "w") as out_f:
+                out_f.writelines([t+"\n" for t in predicted_texts])
+            with open(cache_inputs_fpath, "wb") as out_f:
+                out_f.write(pickle.dumps(eval_set_out))
 
         return expected_texts, predicted_texts, eval_set_out
 
@@ -113,7 +140,6 @@ class Evaluator:
             # token-level F1-score, averaged over all samples:
             fscores = []
             for expected_one, actual_one in zip(expected, actual):
-
                 expected_answers_set = set(itertools.chain(*[a.split() for a in expected_one]))
                 actual_answer_set = actual_one.split()
 
