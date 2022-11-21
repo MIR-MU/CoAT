@@ -39,7 +39,7 @@ class Evaluator:
                             demo_selection_strategy: str = config.demo_selection_strategy,
                             eval_set: Optional[List[Tuple[str, str, str]]] = None
                             ) -> Tuple[List[str], List[str], List[Tuple[str, str, str]]]:
-        identifier = (model.name_or_path, task, demo_selection_strategy)
+        identifier = (str(model.name_or_path).split("/")[-1], task, demo_selection_strategy)
 
         cache_inputs_fpath = os.path.join(config.prediction_cache_dir,
                                           str(task) + "%s-%s-%s-inputs.txt" % identifier)

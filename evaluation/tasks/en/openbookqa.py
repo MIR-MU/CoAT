@@ -22,7 +22,7 @@ class OpenBookQATask(Task):
         super().__init__()
         self.lang_id = lang_id
         self.spacy = spacy.load('en_core_web_sm')
-        self.template = template
+        self.template = template.name
 
         dataset = concatenate_datasets([load_dataset("openbookqa", "additional")["validation"],
                                         load_dataset("openbookqa", "additional")["test"]])

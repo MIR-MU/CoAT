@@ -14,7 +14,7 @@ class GLUEDiagnostics(Task):
         super().__init__(".")
         self.lang_id = lang_id
         self.seen_premises = set()
-        self.template = template
+        self.template = template.name
 
         dataset = load_dataset("pietrolesci/glue_diagnostics")["test"]
 
