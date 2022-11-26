@@ -76,9 +76,9 @@ for model_name_or_path in args.model_names_or_paths.split(","):
 
             # evaluation metric resolution
             if args.metric == "ROUGE":
-                evaluator = RougeInfoDIff(task, bootstrap=args.bootstrap)
+                evaluator = RougeInfoDIff(task, bootstrap=args.bootstrap, max_input_length=args.max_input_length)
             elif args.metric == "Accuracy":
-                evaluator = AccuracyInfoDIff(task, bootstrap=args.bootstrap)
+                evaluator = AccuracyInfoDIff(task, bootstrap=args.bootstrap, max_input_length=args.max_input_length)
             else:
                 raise ValueError("Unknown metric: %s" % args.metric)
 

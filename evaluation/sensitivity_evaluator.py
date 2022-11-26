@@ -12,13 +12,19 @@ from evaluation.tasks.task import Task
 
 class InfoDiffEvaluatorBase(abc.ABC):
 
-    def __init__(self, task: Task,
-                 num_demonstrations: int = 3, firstn: Optional[int] = None, bootstrap: bool = False, **kwargs):
+    def __init__(self,
+                 task: Task,
+                 num_demonstrations: int = 3,
+                 firstn: Optional[int] = None,
+                 bootstrap: bool = False,
+                 max_input_length: Optional[int] = None,
+                 **kwargs):
         super().__init__(**kwargs)
         self.task = task
         self.num_demonstrations = num_demonstrations
         self.firstn = firstn
         self.bootstrap = bootstrap
+        self.max_input_length = max_input_length
 
     @abc.abstractmethod
     def _compute(self, expected: List[str], actual: List[str]) -> float:
@@ -47,7 +53,8 @@ class InfoDiffEvaluatorBase(abc.ABC):
         # there's always less samples in 'informative' group
         expected, actual_informative, eval_set = Evaluator.collect_predictions(model, tokenizer, self.task,
                                                                                self.num_demonstrations, self.firstn,
-                                                                               demo_selection_strategy="cluster-random")
+                                                                               demo_selection_strategy="cluster-random",
+                                                                               max_input_length=self.max_input_length)
         expected, actual_random, _ = Evaluator.collect_predictions(model, tokenizer, self.task,
                                                                    self.num_demonstrations, self.firstn,
                                                                    demo_selection_strategy="random", eval_set=eval_set)

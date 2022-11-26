@@ -37,7 +37,8 @@ class Evaluator:
                             num_demonstrations: int,
                             firstn: Optional[int] = None,
                             demo_selection_strategy: str = config.demo_selection_strategy,
-                            eval_set: Optional[List[Tuple[str, str, str]]] = None
+                            eval_set: Optional[List[Tuple[str, str, str]]] = None,
+                            max_input_length: Optional[int] = None,
                             ) -> Tuple[List[str], List[str], List[Tuple[str, str, str]]]:
         identifier = (str(model.name_or_path).split("/")[-1], str(task).split("/")[-1], demo_selection_strategy)
 
@@ -82,6 +83,11 @@ class Evaluator:
                         skipped += 1
                         continue
                     eval_set_out.append(sample)
+                    input_text = construct_sample(demonstrations, sample)
+                    if max_input_length is not None and len(input_text.split()) > max_input_length:
+                        logger.warning("Skipping input containing %s words.")
+                        skipped += 1
+                        continue
                     input_texts.append(construct_sample(demonstrations, sample))
                     targets.append(sample[1])
                 try:
