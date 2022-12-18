@@ -42,7 +42,7 @@ class Evaluator:
                             ) -> Tuple[List[str], List[str], List[Tuple[str, str, str]]]:
         identifier = (str(model.name_or_path).split("/")[-1], str(task).split("/")[-1], demo_selection_strategy)
 
-        cache_inputs_fpath = os.path.join(config.prediction_cache_dir, "%s-%s-%s-inputs.txt" % identifier)
+        cache_inputs_fpath = os.path.join(config.prediction_cache_dir, "%s-%s-%s-fewshot-inputs.txt" % identifier)
         cache_expected_fpath = os.path.join(config.prediction_cache_dir, "%s-%s-%s-expected.txt" % identifier)
         cache_predicted_fpath = os.path.join(config.prediction_cache_dir, "%s-%s-%s-predicted.txt" % identifier)
         if os.path.exists(cache_expected_fpath) and os.path.exists(cache_predicted_fpath):
@@ -82,13 +82,13 @@ class Evaluator:
                     if not len(demonstrations) == num_demonstrations:
                         skipped += 1
                         continue
-                    eval_set_out.append(sample)
                     input_text = construct_sample(demonstrations, sample)
                     if max_input_length is not None and len(input_text.split()) > max_input_length:
                         logger.warning("Skipping input containing %s words.")
                         skipped += 1
                         continue
                     input_texts.append(construct_sample(demonstrations, sample))
+                    eval_set_out.append(sample)
                     targets.append(sample[1])
                 try:
                     encodings = tokenizer(input_texts, return_tensors="pt", padding=True).to(model.device)
