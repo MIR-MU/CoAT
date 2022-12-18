@@ -42,32 +42,39 @@ class Evaluator:
                             ) -> Tuple[List[str], List[str], List[Tuple[str, str, str]]]:
         identifier = (str(model.name_or_path).split("/")[-1], str(task).split("/")[-1], demo_selection_strategy)
 
-        cache_inputs_fpath = os.path.join(config.prediction_cache_dir, "%s-%s-%s-fewshot-inputs.txt" % identifier)
+        cache_samples_fpath = os.path.join(config.prediction_cache_dir, "%s-%s-%s-inputs.txt" % identifier)
         cache_expected_fpath = os.path.join(config.prediction_cache_dir, "%s-%s-%s-expected.txt" % identifier)
         cache_predicted_fpath = os.path.join(config.prediction_cache_dir, "%s-%s-%s-predicted.txt" % identifier)
+        cache_inputs_fpath = os.path.join(config.prediction_cache_dir, "%s-%s-%s-model_inputs.txt" % identifier)
+
         if os.path.exists(cache_expected_fpath) and os.path.exists(cache_predicted_fpath):
             logger.warning("Reloading predictions for %s from %s, %s", task, cache_expected_fpath, cache_predicted_fpath)
 
             expected_texts = [l.strip() for l in open(cache_expected_fpath).readlines()]
             predicted_texts = [l.strip() for l in open(cache_predicted_fpath).readlines()]
-            with open(cache_inputs_fpath, "rb") as out_f:
-                eval_set_out = pickle.loads(out_f.read())
+            with open(cache_samples_fpath, "rb") as out_f:
+                eval_sample_set_out = pickle.loads(out_f.read())
         else:
             if not os.path.exists(config.prediction_cache_dir):
                 os.makedirs(config.prediction_cache_dir)
 
+            # this gets returned outside:
             expected_texts = []
             predicted_texts = []
 
             eval_set_in = task.data if eval_set is None else eval_set
-            eval_set_out = []
+            eval_sample_set_out = []
+
+            # only for reporting purposes:
+            model_inputs = []
+
             num_samples = firstn if firstn is not None else config.firstn \
                 if config.firstn is not None else len(eval_set_in)
 
             skipped = 0
             for batch_offset in tqdm(range(0, num_samples, config.batch_size), desc="Evaluating %s" % task):
                 tuples_batch = eval_set_in[batch_offset: batch_offset + config.batch_size]
-                input_texts = []
+                batch_input_texts = []
                 targets = []
 
                 for sample in tuples_batch:
@@ -82,16 +89,18 @@ class Evaluator:
                     if not len(demonstrations) == num_demonstrations:
                         skipped += 1
                         continue
-                    input_text = construct_sample(demonstrations, sample)
-                    if max_input_length is not None and len(input_text.split()) > max_input_length:
+                    model_input_text = construct_sample(demonstrations, sample)
+                    if max_input_length is not None and len(model_input_text.split()) > max_input_length:
                         logger.warning("Skipping input containing %s words.")
                         skipped += 1
                         continue
-                    input_texts.append(construct_sample(demonstrations, sample))
-                    eval_set_out.append(sample)
+
+                    batch_input_texts.append(model_input_text)
+                    model_inputs.append(model_input_text)
+                    eval_sample_set_out.append(sample)
                     targets.append(sample[1])
                 try:
-                    encodings = tokenizer(input_texts, return_tensors="pt", padding=True).to(model.device)
+                    encodings = tokenizer(batch_input_texts, return_tensors="pt", padding=True).to(model.device)
                 except IndexError:
                     # logger.warning("Skipping sample %s" % input_texts)
                     continue
@@ -108,10 +117,12 @@ class Evaluator:
                 out_f.writelines([t+"\n" for t in expected_texts])
             with open(cache_predicted_fpath, "w") as out_f:
                 out_f.writelines([t+"\n" for t in predicted_texts])
+            with open(cache_samples_fpath, "wb") as out_f:
+                out_f.write(pickle.dumps(eval_sample_set_out))
             with open(cache_inputs_fpath, "wb") as out_f:
-                out_f.write(pickle.dumps(eval_set_out))
+                out_f.write(pickle.dumps(model_inputs))
 
-        return expected_texts, predicted_texts, eval_set_out
+        return expected_texts, predicted_texts, eval_sample_set_out
 
     @staticmethod
     def evaluate_task(model: AutoModelForSeq2SeqLM,
@@ -119,7 +130,7 @@ class Evaluator:
                       task: Task,
                       num_demonstrations: int = 3) -> float:
 
-        expected_texts, predicted_texts = Evaluator.collect_predictions(model, tokenizer, task, num_demonstrations)
+        expected_texts, predicted_texts, _ = Evaluator.collect_predictions(model, tokenizer, task, num_demonstrations)
         # BoolQ responds consistently in Czech
         # print(self._evaluate_results_for_metric(["ano" if "es" in e else "ne" for e in expected_texts], predicted_texts,
         #                                         task.metric_type, ignore_casing=True))
