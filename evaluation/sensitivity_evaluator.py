@@ -78,6 +78,10 @@ class RougeInfoDIff(InfoDiffEvaluatorBase, ROUGE):
     def _compute(self, expected: List[str], actual: List[str]) -> Union[float, List[float]]:
         return self.evaluate_str(expected, actual)
 
+    def __call__(self, *args, **kwargs) -> Tuple[Union[float, List[float]], Union[float, List[float]]]:
+        random, informative = super(RougeInfoDIff, self).__call__(*args, **kwargs)
+        return informative - random
+
 
 class AccuracyInfoDIff(InfoDiffEvaluatorBase, EvaluatorBase):
 
