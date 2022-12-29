@@ -64,12 +64,12 @@ def _get_categories(program_modules: List[str]) -> str:
     return " ".join(program_modules)
 
 
-qa_train = pd.read_json("teabreac_v1.0_multihop_qa_train.jsonl", lines=True)
+qa_train = pd.read_json("training/data/teabreac_v1.0_multihop_qa_train.jsonl", lines=True)
 qa_train["context_text"] = qa_train["context_text"].apply(lambda c: c.replace(" -> ", ". "))
 qa_train["answers_text"] = qa_train["answers_objects"].apply(lambda ans_obj: _get_answer(ans_obj))
 qa_train["program_modules_str"] = qa_train["program_modules"].apply(lambda modules: _get_categories(modules))
 
-qa_val = pd.read_json("teabreac_v1.0_multihop_qa_dev.jsonl", lines=True)
+qa_val = pd.read_json("training/data/teabreac_v1.0_multihop_qa_dev.jsonl", lines=True)
 qa_val["context_text"] = qa_val["context_text"].apply(lambda c: c.replace(" -> ", ". "))
 qa_val["answers_text"] = qa_val["answers_objects"].apply(lambda ans_obj: _get_answer(ans_obj))
 qa_val["program_modules_str"] = qa_val["program_modules"].apply(lambda modules: _get_categories(modules))
