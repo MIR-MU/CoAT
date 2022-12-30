@@ -65,6 +65,11 @@ def _get_categories(program_modules: List[str]) -> str:
 
 
 qa_train = pd.read_json("training/data/teabreac_v1.0_multihop_qa_train.jsonl", lines=True)
+orig_len = len(qa_train)
+
+qa_train = qa_train[qa_train["context_text"].apply(lambda text: len(text) < 1000)]
+print("Reduced to %s percent of original samples by length." % (len(qa_train) / orig_len) * 100)
+
 qa_train["context_text"] = qa_train["context_text"].apply(lambda c: c.replace(" -> ", ". "))
 qa_train["answers_text"] = qa_train["answers_objects"].apply(lambda ans_obj: _get_answer(ans_obj))
 qa_train["program_modules_str"] = qa_train["program_modules"].apply(lambda modules: _get_categories(modules))
@@ -73,6 +78,8 @@ qa_val = pd.read_json("training/data/teabreac_v1.0_multihop_qa_dev.jsonl", lines
 qa_val["context_text"] = qa_val["context_text"].apply(lambda c: c.replace(" -> ", ". "))
 qa_val["answers_text"] = qa_val["answers_objects"].apply(lambda ans_obj: _get_answer(ans_obj))
 qa_val["program_modules_str"] = qa_val["program_modules"].apply(lambda modules: _get_categories(modules))
+
+qa_val = qa_val[qa_val["answers_text"].apply(lambda ans: ans is not None and len(ans.strip()))]
 
 glue_task = GLUEDiagnostics("en")
 glue_diff_evaluator = RougeInfoDIff(glue_task)  # TODO: this returns tuples now
@@ -142,7 +149,7 @@ schedule = ParallelSchedule(objectives=[
     q_answering_en,
     # q_answering_cs
 ],
-                            args=training_arguments)
+    args=training_arguments)
 
 adapter = Adapter(lang_module, schedule, args=training_arguments)
 adapter.train()
