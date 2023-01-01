@@ -78,7 +78,7 @@ qa_val["context_text"] = qa_val["context_text"].apply(lambda c: c.replace(" -> "
 qa_val["answers_text"] = qa_val["answers_objects"].apply(lambda ans_obj: _get_answer(ans_obj))
 qa_val["program_modules_str"] = qa_val["program_modules"].apply(lambda modules: _get_categories(modules))
 
-qa_val = qa_val[qa_val["answers_text"].apply(lambda ans: ans is not None and isinstance(ans, str) and len(ans.strip()))]
+qa_val = qa_val[qa_val["answers_text"].apply(lambda ans: ans is not None  and isinstance(ans, str) and len(ans.strip()) > 0)]
 
 glue_task = GLUEDiagnostics("en")
 glue_diff_evaluator = RougeInfoDIff(glue_task)  # TODO: this returns tuples now
