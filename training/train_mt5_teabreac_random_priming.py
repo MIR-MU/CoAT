@@ -26,7 +26,7 @@ training_arguments = AdaptationArguments(output_dir="train_dir_random_large",
                                          warmup_steps=1000,
                                          max_steps=100000,
                                          gradient_accumulation_steps=30,  # TODO: set
-                                         eval_steps=1,  # TODO: set
+                                         eval_steps=100,  # TODO: set
                                          logging_steps=10,
                                          save_steps=1000,
                                          num_train_epochs=50,
@@ -37,11 +37,6 @@ eval_examples = 200  # TODO set
 
 # priming
 num_demonstrations = 3
-
-val_metrics = [BLEU(**{"additional_sep_char": "▁"}, decides_convergence=True)]
-
-superglue_metrics = [TaskROUGE(TaskCls(), num_demonstrations, firstn=eval_examples // 3) for TaskCls in
-                     all_task_classes]
 
 
 def _construct_priming_prompt(previous_examples: List[str], current_example: str) -> str:
@@ -83,10 +78,15 @@ qa_val["context_text"] = qa_val["context_text"].apply(lambda c: c.replace(" -> "
 qa_val["answers_text"] = qa_val["answers_objects"].apply(lambda ans_obj: _get_answer(ans_obj))
 qa_val["program_modules_str"] = qa_val["program_modules"].apply(lambda modules: _get_categories(modules))
 
-qa_val = qa_val[qa_val["answers_text"].apply(lambda ans: ans is not None and len(ans.strip()))]
+qa_val = qa_val[qa_val["answers_text"].apply(lambda ans: ans is not None and isinstance(ans, str) and len(ans.strip()))]
 
 glue_task = GLUEDiagnostics("en")
-glue_diff_evaluator = RougeInfoDIff(glue_task)
+glue_diff_evaluator = RougeInfoDIff(glue_task)  # TODO: this returns tuples now
+
+
+val_metrics = [BLEU(**{"additional_sep_char": "▁"}, decides_convergence=True)]
+
+superglue_metrics = [TaskROUGE(TaskCls(), num_demonstrations, firstn=eval_examples // 3) for TaskCls in all_task_classes]
 
 
 def _get_en_squad_categories(data) -> List[str]:
