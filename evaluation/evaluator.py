@@ -39,6 +39,7 @@ class Evaluator:
                             demo_selection_strategy: str = config.demo_selection_strategy,
                             eval_set: Optional[List[Tuple[str, str, str]]] = None,
                             max_input_length: Optional[int] = None,
+                            use_cache: bool = True,
                             ) -> Tuple[List[str], List[str], List[Tuple[str, str, str]]]:
         identifier = (str(model.name_or_path).split("/")[-1], str(task).split("/")[-1], demo_selection_strategy)
 
@@ -47,7 +48,7 @@ class Evaluator:
         cache_predicted_fpath = os.path.join(config.prediction_cache_dir, "%s-%s-%s-predicted.txt" % identifier)
         cache_inputs_fpath = os.path.join(config.prediction_cache_dir, "%s-%s-%s-model_inputs.txt" % identifier)
 
-        if os.path.exists(cache_expected_fpath) and os.path.exists(cache_predicted_fpath):
+        if use_cache and os.path.exists(cache_expected_fpath) and os.path.exists(cache_predicted_fpath):
             logger.warning("Reloading predictions for %s from %s, %s", task, cache_expected_fpath, cache_predicted_fpath)
 
             expected_texts = [l.strip() for l in open(cache_expected_fpath).readlines()]
@@ -113,14 +114,15 @@ class Evaluator:
 
             logger.warning("%s: Skipped samples: %s out of total: %s" % (task, skipped, num_samples))
             logger.warning("Saving predictions for %s into %s, %s", task, cache_expected_fpath, cache_predicted_fpath)
-            with open(cache_expected_fpath, "w") as out_f:
-                out_f.writelines([t+"\n" for t in expected_texts])
-            with open(cache_predicted_fpath, "w") as out_f:
-                out_f.writelines([t+"\n" for t in predicted_texts])
-            with open(cache_samples_fpath, "wb") as out_f:
-                out_f.write(pickle.dumps(eval_sample_set_out))
-            with open(cache_inputs_fpath, "wb") as out_f:
-                out_f.write(pickle.dumps(model_inputs))
+            if use_cache:
+                with open(cache_expected_fpath, "w") as out_f:
+                    out_f.writelines([t+"\n" for t in expected_texts])
+                with open(cache_predicted_fpath, "w") as out_f:
+                    out_f.writelines([t+"\n" for t in predicted_texts])
+                with open(cache_samples_fpath, "wb") as out_f:
+                    out_f.write(pickle.dumps(eval_sample_set_out))
+                with open(cache_inputs_fpath, "wb") as out_f:
+                    out_f.write(pickle.dumps(model_inputs))
 
         return expected_texts, predicted_texts, eval_sample_set_out
 
