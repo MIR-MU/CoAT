@@ -47,8 +47,10 @@ class InfoDiffEvaluatorBase(abc.ABC):
 
         return evals
 
-    def __call__(self, model: PreTrainedModel, tokenizer: PreTrainedTokenizer, _) -> Tuple[Union[float, List[float]],
-                                                                                           Union[float, List[float]]]:
+    def get_per_sampling_performance(self,
+                                     model: PreTrainedModel,
+                                     tokenizer: PreTrainedTokenizer) -> Tuple[Union[List[float], float],
+                                                                              Union[List[float], float]]:
         # print("Model's performance in random selection: %s" % random_performance)
         # there's always less samples in 'informative' group
         expected, actual_informative, eval_set = Evaluator.collect_predictions(model, tokenizer, self.task,
@@ -69,6 +71,19 @@ class InfoDiffEvaluatorBase(abc.ABC):
 
         return random_performance, informative_performance
 
+    def __call__(self, model: PreTrainedModel, tokenizer: PreTrainedTokenizer, _) -> float:
+        random_performance, informative_performance = self.get_per_sampling_performance(model, tokenizer)
+
+        if self.bootstrap:
+            performance_diffs = [info - random for info, random in zip(random_performance, informative_performance)]
+            performance_diff = sum(performance_diffs) / len(performance_diffs)  # average
+        else:
+            performance_diff = informative_performance - random_performance
+
+        # print("Model's performance in informative selection: %s" % informative_performance)
+
+        return performance_diff
+
     def __str__(self):
         return "%s_%s" % (self.task, super().__str__())
 
@@ -77,10 +92,6 @@ class RougeInfoDIff(InfoDiffEvaluatorBase, ROUGE):
 
     def _compute(self, expected: List[str], actual: List[str]) -> Union[float, List[float]]:
         return self.evaluate_str(expected, actual)
-
-    def __call__(self, *args, **kwargs) -> Tuple[Union[float, List[float]], Union[float, List[float]]]:
-        random, informative = super(RougeInfoDIff, self).__call__(*args, **kwargs)
-        return informative - random
 
 
 class AccuracyInfoDIff(InfoDiffEvaluatorBase, EvaluatorBase):
