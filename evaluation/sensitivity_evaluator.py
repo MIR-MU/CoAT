@@ -49,17 +49,21 @@ class InformativeEvaluatorBase(abc.ABC):
 
     def get_per_sampling_performance(self,
                                      model: PreTrainedModel,
-                                     tokenizer: PreTrainedTokenizer) -> Tuple[Union[List[float], float],
+                                     tokenizer: PreTrainedTokenizer,
+                                     use_cache: bool = True) -> Tuple[Union[List[float], float],
                                                                               Union[List[float], float]]:
         # print("Model's performance in random selection: %s" % random_performance)
         # there's always less samples in 'informative' group
         expected, actual_informative, eval_set = Evaluator.collect_predictions(model, tokenizer, self.task,
                                                                                self.num_demonstrations, self.firstn,
                                                                                demo_selection_strategy="cluster-random",
-                                                                               max_input_length=self.max_input_length)
+                                                                               max_input_length=self.max_input_length,
+                                                                               use_cache=use_cache)
         expected, actual_random, _ = Evaluator.collect_predictions(model, tokenizer, self.task,
                                                                    self.num_demonstrations, self.firstn,
-                                                                   demo_selection_strategy="random", eval_set=eval_set)
+                                                                   demo_selection_strategy="random",
+                                                                   eval_set=eval_set,
+                                                                   use_cache=use_cache)
         if self.bootstrap:
             informative_performance = self._compute_bootstrapped(expected, actual_informative)
             random_performance = self._compute_bootstrapped(expected, actual_informative)
@@ -81,7 +85,8 @@ class RougeRandom(InformativeEvaluatorBase, ROUGE):
         return self.evaluate_str(expected, actual)
 
     def __call__(self, model: PreTrainedModel, tokenizer: PreTrainedTokenizer, _) -> float:
-        random_performance_all, informative_performance_all = self.get_per_sampling_performance(model, tokenizer)
+        random_performance_all, informative_performance_all = self.get_per_sampling_performance(model, tokenizer,
+                                                                                                use_cache=False)
 
         if self.bootstrap:
             random_performance = sum(random_performance_all) / len(random_performance_all)  # average
@@ -94,7 +99,8 @@ class RougeRandom(InformativeEvaluatorBase, ROUGE):
 class RougeInformative(RougeRandom, ROUGE):
 
     def __call__(self, model: PreTrainedModel, tokenizer: PreTrainedTokenizer, _) -> float:
-        random_performance_all, informative_performance_all = self.get_per_sampling_performance(model, tokenizer)
+        random_performance_all, informative_performance_all = self.get_per_sampling_performance(model, tokenizer,
+                                                                                                use_cache=False)
 
         if self.bootstrap:
             informative_performance = sum(informative_performance_all) / len(informative_performance_all)  # average
