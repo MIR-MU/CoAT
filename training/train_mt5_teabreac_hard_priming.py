@@ -25,10 +25,10 @@ training_arguments = AdaptationArguments(output_dir="train_dir_teabreac_hard_lar
                                          eval_steps=100,  # TODO: set
                                          logging_steps=10,
                                          save_steps=200,
-                                         num_train_epochs=50,
+                                         num_train_epochs=3,
                                          evaluation_strategy="steps",
-                                         save_total_limit=5,
-                                         stopping_patience=30)
+                                         save_total_limit=10,
+                                         stopping_patience=10)
 eval_examples = 200  # TODO set
 
 # priming

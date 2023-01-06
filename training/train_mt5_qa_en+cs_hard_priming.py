@@ -26,17 +26,17 @@ training_arguments = AdaptationArguments(output_dir="train_dir_hard_large",
                                          gradient_accumulation_steps=30,  # TODO: set
                                          eval_steps=100,  # TODO: set
                                          logging_steps=10,
-                                         save_steps=1000,
+                                         save_steps=200,
                                          num_train_epochs=50,
                                          evaluation_strategy="steps",
-                                         save_total_limit=10,
+                                         save_total_limit=30,
                                          stopping_patience=30)
 eval_examples = 200  # TODO set
 
 # priming
 num_demonstrations = 3
 
-val_metrics = [BLEU(**{"additional_sep_char": "▁"}, decides_convergence=True)]
+val_metrics = [BLEU(**{"additional_sep_char": "▁"})]
 
 superglue_metrics = [TaskROUGE(TaskCls(), num_demonstrations, firstn=eval_examples // 3) for TaskCls in
                      all_task_classes]
@@ -71,7 +71,7 @@ def _get_en_squad_categories(data) -> List[str]:
 
 
 q_answering_en = Priming(lang_module,
-                         difficulty_sample=64,  # TODO set
+                         difficulty_sample=5,  # TODO set
                          demos_selection_strategy="hard",  # TODO set
                          texts_or_path=qa_train["question"],
                          text_pair_or_path=qa_train["context"],
@@ -97,7 +97,7 @@ answers_cs = []
 categories_cs = []
 
 for i, entry in squad_cs_dataset.items():
-    if len(entry["context"]) > 8000:
+    if len(entry["context"]) > 1800:
         skipped += 1
         continue
 
@@ -109,7 +109,8 @@ for i, entry in squad_cs_dataset.items():
 print("Skipped cs examples: %s" % skipped)
 
 q_answering_cs = Priming(lang_module,
-                         difficulty_sample=64,  # TODO set
+                         difficulty_sample=5,  # TODO set
+                         max_num_demonstrations=4,
                          demos_selection_strategy="hard",  # TODO set
                          texts_or_path=questions_cs[:-eval_examples],
                          text_pair_or_path=contexts_cs[:-eval_examples],

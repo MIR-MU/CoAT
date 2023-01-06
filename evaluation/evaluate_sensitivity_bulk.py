@@ -34,14 +34,15 @@ parser.add_argument("--max_input_length", default=None, type=int,
 args = parser.parse_args()
 results = {}
 
-max_memory_mapping = {0: "79GB"}
+max_memory_mapping = {0: "45GB", 1: "65GB", 2: "65GB", 3: "55GB"}
 
 for model_name_or_path in args.model_names_or_paths.split(","):
     results[model_name_or_path] = {}
     model = AutoModelForSeq2SeqLM.from_pretrained(model_name_or_path,
-                                                  # device_map="auto",
-                                                  # max_memory=max_memory_mapping
-                                                  )
+                                                      # device_map=device_map,
+                                                      device_map="auto",
+                                                      # max_memory=max_memory_mapping
+                                                      )
     tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
 
     for dataset_id in args.dataset_ids.split(","):
