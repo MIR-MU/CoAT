@@ -2,7 +2,7 @@ import torch
 from promptsource.templates import DatasetTemplates
 from transformers import AutoModelForSeq2SeqLM, AutoTokenizer, AutoModelForCausalLM
 
-from evaluation.sensitivity_evaluator import RougeInfoDIff, AccuracyInfoDIff
+from evaluation.sensitivity_evaluator import RougeInformative, AccuracyInformative
 
 # TODO: aren't SQuAD examples more informative?
 # dataset = load_dataset("squad")
@@ -12,6 +12,7 @@ import argparse
 
 from evaluation.tasks.en.openbookqa import OpenBookQATask
 from evaluation.tasks.en.r4c_hotpotqa import R4CHotpotQATask
+from evaluation.tasks.en.worldtree_qa import WorldTreeQA
 
 parser = argparse.ArgumentParser()
 
@@ -19,7 +20,7 @@ parser.add_argument("--model_names_or_paths", default="gaussalgo/mt5-base-primin
                     help="Coma-separated list of evaluated models' identifiers")
 parser.add_argument("--dataset_ids", default="glue/mnli", type=str,
                     help="Coma-separated list of evaluation datasets. Must be one of the implemented datasets: "
-                         "'glue/mnli', 'openbookqa/additional', 'hotpot_qa/fullwiki'")
+                         "'glue/mnli', 'openbookqa/additional', 'hotpot_qa/fullwiki', 'worldtree'")
 parser.add_argument("--template_names", default=None, type=str,
                     help="Names of the templates to evaluate with")
 parser.add_argument("--metric", default="ROUGE", type=str,
@@ -27,30 +28,26 @@ parser.add_argument("--metric", default="ROUGE", type=str,
                          "'ROUGE', 'Accuracy'.")
 parser.add_argument("--bootstrap", default=True, type=bool,
                     help="Whether to collect a set of results over random subsets of predictions. Defaults to True.")
+parser.add_argument("--max_input_length", default=None, type=int,
+                    help="Whether to collect a set of results over random subsets of predictions. Defaults to True.")
 
 args = parser.parse_args()
 results = {}
 
-max_memory_mapping = {0: "65GB", 1: "65GB"}
+max_memory_mapping = {0: "79GB"}
 
 for model_name_or_path in args.model_names_or_paths.split(","):
     results[model_name_or_path] = {}
-    try:
-        model = AutoModelForSeq2SeqLM.from_pretrained(model_name_or_path,
-                                                      device_map="auto",
-                                                      # max_memory=max_memory_mapping
-                                                      )
-    except ValueError:
-        model = AutoModelForCausalLM.from_pretrained(model_name_or_path,
-                                                     device_map="auto",
-                                                     max_memory=max_memory_mapping
-                                                     )
+    model = AutoModelForSeq2SeqLM.from_pretrained(model_name_or_path,
+                                                  # device_map="auto",
+                                                  # max_memory=max_memory_mapping
+                                                  )
     tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
 
     for dataset_id in args.dataset_ids.split(","):
         # eval templates resolution
         if args.template_names is not None:
-            eval_templates = args.template_names
+            eval_templates = args.template_names.split(",")
         else:
             if dataset_id == 'hotpot_qa/fullwiki':
                 # only two templates for hotpot_qa require answering questions, others are for different tasks
@@ -76,14 +73,14 @@ for model_name_or_path in args.model_names_or_paths.split(","):
 
             # evaluation metric resolution
             if args.metric == "ROUGE":
-                evaluator = RougeInfoDIff(task, bootstrap=args.bootstrap, max_input_length=args.max_input_length)
+                evaluator = RougeInformative(task, bootstrap=args.bootstrap, max_input_length=args.max_input_length)
             elif args.metric == "Accuracy":
-                evaluator = AccuracyInfoDIff(task, bootstrap=args.bootstrap, max_input_length=args.max_input_length)
+                evaluator = AccuracyInformative(task, bootstrap=args.bootstrap, max_input_length=args.max_input_length)
             else:
                 raise ValueError("Unknown metric: %s" % args.metric)
 
             # a list of results if args.bootstrap, a single prediction otherwise
-            random_selection_perf, info_selection_perf = evaluator(model, tokenizer, None)
+            random_selection_perf, info_selection_perf = evaluator.get_per_sampling_performance(model, tokenizer)
             if not args.bootstrap:
                 # unify the format, so we have a single result formatting
                 random_selection_perf, info_selection_perf = [random_selection_perf], [info_selection_perf]

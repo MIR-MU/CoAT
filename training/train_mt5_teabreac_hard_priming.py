@@ -7,13 +7,13 @@ from adaptor.lang_module import LangModule
 from adaptor.schedules import ParallelSchedule
 from adaptor.utils import AdaptationArguments, StoppingStrategy
 
-from evaluation.sensitivity_evaluator import RougeInfoDIff
+from evaluation.sensitivity_evaluator import RougeInformative
 from evaluation.tasks.en.glue_diagnostics import GLUEDiagnostics
 from evaluation.tasks.en.superglue import all_task_classes
 from priming_objective import Priming
 from training.sglue_evaluators import TaskROUGE
 
-training_arguments = AdaptationArguments(output_dir="train_dir_hard_large",
+training_arguments = AdaptationArguments(output_dir="train_dir_teabreac_hard_large",
                                          learning_rate=5e-5,  # we set LR=2e-4 for pre-training experiments
                                          # stopping_strategy=StoppingStrategy.ALL_OBJECTIVES_CONVERGED,
                                          stopping_strategy=StoppingStrategy.ALL_OBJECTIVES_CONVERGED,
@@ -24,20 +24,15 @@ training_arguments = AdaptationArguments(output_dir="train_dir_hard_large",
                                          gradient_accumulation_steps=30,  # TODO: set
                                          eval_steps=100,  # TODO: set
                                          logging_steps=10,
-                                         save_steps=1000,
+                                         save_steps=200,
                                          num_train_epochs=50,
                                          evaluation_strategy="steps",
-                                         save_total_limit=10,
+                                         save_total_limit=5,
                                          stopping_patience=30)
 eval_examples = 200  # TODO set
 
 # priming
 num_demonstrations = 3
-
-val_metrics = [BLEU(**{"additional_sep_char": "▁"}, decides_convergence=True)]
-
-superglue_metrics = [TaskROUGE(TaskCls(), num_demonstrations, firstn=eval_examples // 3) for TaskCls in
-                     all_task_classes]
 
 
 def _construct_priming_prompt(previous_examples: List[str], current_example: str) -> str:
@@ -47,7 +42,8 @@ def _construct_priming_prompt(previous_examples: List[str], current_example: str
 # lang_module = LangModule("google/mt5-small")  # TODO set
 # lang_module = LangModule("gaussalgo/mt5-base-priming-QA_en-cs")
 # lang_module = LangModule("google/mt5-base")
-lang_module = LangModule("google/mt5-large")
+# lang_module = LangModule("google/mt5-large")
+lang_module = LangModule("trained_models/mt5_teabreac_hard_large_ch4000/AQA-en-Priming")
 
 # priming
 per_type_examples = {}
@@ -67,7 +63,7 @@ def _get_categories(program_modules: List[str]) -> str:
 qa_train = pd.read_json("training/data/teabreac_v1.0_multihop_qa_train.jsonl", lines=True)
 orig_len = len(qa_train)
 
-qa_train = qa_train[qa_train["context_text"].apply(lambda text: len(text) < 1000)]
+qa_train = qa_train[qa_train["context_text"].apply(lambda text: len(text) < 1000)].sample(frac=1)
 print("Reduced to %s percent of original samples by length." % (len(qa_train) / orig_len) * 100)
 
 qa_train["context_text"] = qa_train["context_text"].apply(lambda c: c.replace(" -> ", ". "))
@@ -79,10 +75,15 @@ qa_val["context_text"] = qa_val["context_text"].apply(lambda c: c.replace(" -> "
 qa_val["answers_text"] = qa_val["answers_objects"].apply(lambda ans_obj: _get_answer(ans_obj))
 qa_val["program_modules_str"] = qa_val["program_modules"].apply(lambda modules: _get_categories(modules))
 
-qa_val = qa_val[qa_val["answers_text"].apply(lambda ans: ans is not None and len(ans.strip()))]
+qa_val = qa_val[qa_val["answers_text"].apply(lambda ans: ans is not None and isinstance(ans, str) and len(ans.strip()) > 0)]
 
 glue_task = GLUEDiagnostics("en")
-glue_diff_evaluator = RougeInfoDIff(glue_task)  # TODO: this returns tuples now
+glue_diff_evaluator = RougeInformative(glue_task)  # TODO: this returns tuples now
+
+
+val_metrics = [BLEU(**{"additional_sep_char": "▁"}, decides_convergence=True)]
+
+superglue_metrics = [TaskROUGE(TaskCls(), num_demonstrations, firstn=eval_examples // 3) for TaskCls in all_task_classes]
 
 
 def _get_en_squad_categories(data) -> List[str]:
@@ -92,7 +93,7 @@ def _get_en_squad_categories(data) -> List[str]:
 
 
 q_answering_en = Priming(lang_module,
-                         difficulty_sample=30,  # TODO set
+                         difficulty_sample=5,  # TODO set
                          demos_selection_strategy="hard",  # TODO set
                          texts_or_path=qa_train["question_text"],
                          text_pair_or_path=qa_train["context_text"],

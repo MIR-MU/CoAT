@@ -8,7 +8,7 @@ from adaptor.schedules import ParallelSchedule
 from adaptor.utils import AdaptationArguments, StoppingStrategy
 from datasets import load_dataset
 
-from evaluation.sensitivity_evaluator import RougeInfoDIff
+from evaluation.sensitivity_evaluator import RougeInformative
 from evaluation.tasks.en.glue_diagnostics import GLUEDiagnostics
 from evaluation.tasks.en.adversarialqa import AdversarialQATask
 from evaluation.tasks.en.superglue import all_task_classes
@@ -58,10 +58,10 @@ qa_en = load_dataset("adversarial_qa", "adversarialQA")
 qa_train = qa_en["train"].filter(lambda entry: len(entry["context"]) < 2000)
 
 qa_task = AdversarialQATask("en")
-qa_diff_evaluator = RougeInfoDIff(qa_task)
+qa_diff_evaluator = RougeInformative(qa_task)
 
 glue_task = GLUEDiagnostics("en")
-glue_diff_evaluator = RougeInfoDIff(glue_task)
+glue_diff_evaluator = RougeInformative(glue_task)
 
 
 def _get_en_squad_categories(data) -> List[str]:

@@ -10,7 +10,7 @@ from evaluation.evaluator import Evaluator
 from evaluation.tasks.task import Task
 
 
-class InfoDiffEvaluatorBase(abc.ABC):
+class InformativeEvaluatorBase(abc.ABC):
 
     def __init__(self,
                  task: Task,
@@ -71,31 +71,46 @@ class InfoDiffEvaluatorBase(abc.ABC):
 
         return random_performance, informative_performance
 
-    def __call__(self, model: PreTrainedModel, tokenizer: PreTrainedTokenizer, _) -> float:
-        random_performance, informative_performance = self.get_per_sampling_performance(model, tokenizer)
-
-        if self.bootstrap:
-            performance_diffs = [info - random for info, random in zip(random_performance, informative_performance)]
-            performance_diff = sum(performance_diffs) / len(performance_diffs)  # average
-        else:
-            performance_diff = informative_performance - random_performance
-
-        # print("Model's performance in informative selection: %s" % informative_performance)
-
-        return performance_diff
-
     def __str__(self):
         return "%s_%s" % (self.task, super().__str__())
 
 
-class RougeInfoDIff(InfoDiffEvaluatorBase, ROUGE):
+class RougeRandom(InformativeEvaluatorBase, ROUGE):
 
     def _compute(self, expected: List[str], actual: List[str]) -> Union[float, List[float]]:
         return self.evaluate_str(expected, actual)
 
+    def __call__(self, model: PreTrainedModel, tokenizer: PreTrainedTokenizer, _) -> float:
+        random_performance_all, informative_performance_all = self.get_per_sampling_performance(model, tokenizer)
 
-class AccuracyInfoDIff(InfoDiffEvaluatorBase, EvaluatorBase):
+        if self.bootstrap:
+            random_performance = sum(random_performance_all) / len(random_performance_all)  # average
+        else:
+            random_performance = random_performance_all
+
+        return random_performance
+
+
+class RougeInformative(RougeRandom, ROUGE):
+
+    def __call__(self, model: PreTrainedModel, tokenizer: PreTrainedTokenizer, _) -> float:
+        random_performance_all, informative_performance_all = self.get_per_sampling_performance(model, tokenizer)
+
+        if self.bootstrap:
+            informative_performance = sum(informative_performance_all) / len(informative_performance_all)  # average
+        else:
+            informative_performance = informative_performance_all
+
+        return informative_performance
+
+
+class AccuracyRandom(RougeRandom, EvaluatorBase):
 
     def _compute(self, expected: List[str], actual: List[str]) -> Union[float, List[float]]:
         num_correct = sum([exp == act for exp, act in zip(expected, actual)])
         return num_correct / len(expected)
+
+
+class AccuracyInformative(AccuracyRandom, RougeInformative, EvaluatorBase):
+
+    pass

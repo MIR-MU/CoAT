@@ -11,13 +11,13 @@ from adaptor.lang_module import LangModule
 from adaptor.schedules import ParallelSchedule
 from adaptor.utils import AdaptationArguments, StoppingStrategy
 
-from evaluation.sensitivity_evaluator import RougeInfoDIff
+from evaluation.sensitivity_evaluator import RougeInformative
 from evaluation.tasks.en.glue_diagnostics import GLUEDiagnostics
 from evaluation.tasks.en.superglue import all_task_classes
 from priming_objective import Priming
 from training.sglue_evaluators import TaskROUGE
 
-training_arguments = AdaptationArguments(output_dir="train_dir_random_large",
+training_arguments = AdaptationArguments(output_dir="train_dir_teabreac_random_large",
                                          learning_rate=5e-5,  # we set LR=2e-4 for pre-training experiments
                                          # stopping_strategy=StoppingStrategy.ALL_OBJECTIVES_CONVERGED,
                                          stopping_strategy=StoppingStrategy.ALL_OBJECTIVES_CONVERGED,
@@ -28,10 +28,10 @@ training_arguments = AdaptationArguments(output_dir="train_dir_random_large",
                                          gradient_accumulation_steps=30,  # TODO: set
                                          eval_steps=100,  # TODO: set
                                          logging_steps=10,
-                                         save_steps=1000,
+                                         save_steps=200,
                                          num_train_epochs=50,
                                          evaluation_strategy="steps",
-                                         save_total_limit=10,
+                                         save_total_limit=5,
                                          stopping_patience=30)
 eval_examples = 200  # TODO set
 
@@ -46,7 +46,7 @@ def _construct_priming_prompt(previous_examples: List[str], current_example: str
 # lang_module = LangModule("google/mt5-small")  # TODO set
 # lang_module = LangModule("gaussalgo/mt5-base-priming-QA_en-cs")
 # lang_module = LangModule("google/mt5-base")
-lang_module = LangModule("google/mt5-large")
+# lang_module = LangModule("google/mt5-large")
 
 # priming
 per_type_examples = {}
@@ -81,7 +81,7 @@ qa_val["program_modules_str"] = qa_val["program_modules"].apply(lambda modules: 
 qa_val = qa_val[qa_val["answers_text"].apply(lambda ans: ans is not None  and isinstance(ans, str) and len(ans.strip()) > 0)]
 
 glue_task = GLUEDiagnostics("en")
-glue_diff_evaluator = RougeInfoDIff(glue_task)  # TODO: this returns tuples now
+glue_diff_evaluator = RougeInformative(glue_task)  # TODO: this returns tuples now
 
 
 val_metrics = [BLEU(**{"additional_sep_char": "▁"}, decides_convergence=True)]
