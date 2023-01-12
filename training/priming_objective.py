@@ -17,7 +17,8 @@ class Priming(Sequence2Sequence):
 
     def __init__(self, *args,
                  train_question_categories: Iterable[str],
-                 val_question_categories: Iterable[str],
+                 max_eval_samples: int,
+                 val_question_categories: Optional[Iterable[str]] = None,
                  min_num_demonstrations: int = 2,
                  max_num_demonstrations: int = 5,
                  demos_infer_batch_size: int = 32,
@@ -28,7 +29,7 @@ class Priming(Sequence2Sequence):
         super().__init__(*args, **kwargs)
 
         self.train_question_categories = list(train_question_categories)
-        self.val_question_categories = list(val_question_categories)
+        self.val_question_categories = list(val_question_categories) if val_question_categories is not None else None
 
         self.min_num_demonstrations = min_num_demonstrations
         self.max_num_demonstrations = max_num_demonstrations
@@ -36,6 +37,7 @@ class Priming(Sequence2Sequence):
         self.demos_selection_strategy = demos_selection_strategy
         self.difficulty_sample = difficulty_sample
         self.max_input_length = max_input_length
+        self.max_eval_samples = max_eval_samples
 
     def _construct_qa_prompt(self, question: str, context: str) -> str:
         return priming_formats["QA"][self.source_lang_id] % (question, context)
@@ -90,7 +92,6 @@ class Priming(Sequence2Sequence):
         """
         Creates a default iterator over encodings with aligned input and output texts.
         :param split: Data split. `train` or `eval`.
-        :param difficulty_sample: A size of random sample to pick the most difficult examples from.
         :return: Iterator of model input encodings.
         """
         # we materialize all samples in memory, so that we can heuristically pick the combinations
@@ -105,6 +106,8 @@ class Priming(Sequence2Sequence):
         features_batch = []
         cat_index = {cat: [i for i, sample_cat in enumerate(question_categories) if cat == sample_cat]
                      for cat in set(question_categories)}
+
+        retrieved_samples = 0
 
         for idx, sample_category in enumerate(question_categories):
             if not cat_index[sample_category]:
@@ -122,22 +125,44 @@ class Priming(Sequence2Sequence):
                 if sum(map(len, picked_demonstrations)) > self.max_input_length:
                     logger.warning("Skipping too long prompt.")
                     break
-                if split == "train" and self.demos_selection_strategy == "hard":
+                if self.demos_selection_strategy == "hard":
                     # pick the most difficult examples out of a sample
+                    # we do not need to worry for picking up the predicted sample among demonstrations in hard strategy
+                    if len(cat_index[sample_category]) <= 1:
+                        # we can not construct informative demonstrations for categories of a single item
+                        break
+
                     samples_idx = random.choices(cat_index[sample_category], k=self.difficulty_sample)
                     cand_demonstrations = [self._construct_demonstration(prompts[i], answers[i]) for i in samples_idx]
                     selected_index = self._pick_most_difficult_demo(picked_demonstrations, cand_demonstrations,
                                                                     pred_prompt, pred_answer)
                     picked_demonstrations.append(cand_demonstrations[selected_index])
-                else:
+                elif self.demos_selection_strategy == "informative":
+                    if len(cat_index[sample_category]) <= 1:
+                        # we can not construct informative demonstrations for categories of a single item
+                        break
+                    selected_cat_index = random.randint(1, len(cat_index[sample_category])-1)
+                    selected_index = cat_index[sample_category][selected_cat_index]
+                    if selected_index == idx:
+                        # we do not want to expose the predicted sample in demonstrations
+                        selected_index = cat_index[sample_category][selected_cat_index-1]
+                    picked_demonstration = self._construct_demonstration(prompts[selected_index],
+                                                                         answers[selected_index])
+                    picked_demonstrations.append(picked_demonstration)
+                elif self.demos_selection_strategy == "random":
                     # evaluation: do not infer samples' difficulty, pick randomly
                     selected_index = random.randint(1, len(prompts)-1)
                     if selected_index == idx:
-                        # we do not expose the predicted sample in demonstrations
+                        # we do not want to expose the predicted sample in demonstrations
                         selected_index -= 1
                     picked_demonstration = self._construct_demonstration(prompts[selected_index],
                                                                          answers[selected_index])
                     picked_demonstrations.append(picked_demonstration)
+                else:
+                    raise ValueError("Unknown demon selection strategy: '%s'" % self.demos_selection_strategy)
+            if len(picked_demonstrations) != expected_num_demonstrations:
+                # we omit examples with none or only one demonstration in the category
+                continue
 
             # encode a yielded batch
             primed_prompt = self._construct_primed_prompt(picked_demonstrations, pred_prompt)
@@ -151,6 +176,12 @@ class Priming(Sequence2Sequence):
             if len(features_batch) == self.batch_size:
                 yield self.collator(features_batch)
                 features_batch = []
+
+            retrieved_samples += 1
+            if split == "eval" and retrieved_samples >= self.max_eval_samples:
+                # custom evaluation break - we need all samples in set to match categories,
+                # but do not want to iterate them all
+                break
 
         if features_batch:
             # yield last nonempty residual batch

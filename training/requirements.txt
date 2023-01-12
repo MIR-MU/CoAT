@@ -1,3 +1,4 @@
 adaptor[generative]>=0.1.6
 torch==1.11.0
 pandas
+nltk

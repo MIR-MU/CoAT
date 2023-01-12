@@ -18,6 +18,7 @@ class InformativeEvaluatorBase(abc.ABC):
                  firstn: Optional[int] = None,
                  bootstrap: bool = False,
                  max_input_length: Optional[int] = None,
+                 reuse_last_run: bool = False,
                  **kwargs):
         super().__init__(**kwargs)
         self.task = task
@@ -25,6 +26,7 @@ class InformativeEvaluatorBase(abc.ABC):
         self.firstn = firstn
         self.bootstrap = bootstrap
         self.max_input_length = max_input_length
+        self.reuse_last_run = reuse_last_run
 
     @abc.abstractmethod
     def _compute(self, expected: List[str], actual: List[str]) -> float:
@@ -51,7 +53,7 @@ class InformativeEvaluatorBase(abc.ABC):
                                      model: PreTrainedModel,
                                      tokenizer: PreTrainedTokenizer,
                                      use_cache: bool = True) -> Tuple[Union[List[float], float],
-                                                                              Union[List[float], float]]:
+                                                                      Union[List[float], float]]:
         # print("Model's performance in random selection: %s" % random_performance)
         # there's always less samples in 'informative' group
         expected, actual_informative, eval_set = Evaluator.collect_predictions(model, tokenizer, self.task,
@@ -85,13 +87,13 @@ class RougeRandom(InformativeEvaluatorBase, ROUGE):
         return self.evaluate_str(expected, actual)
 
     def __call__(self, model: PreTrainedModel, tokenizer: PreTrainedTokenizer, _) -> float:
-        random_performance_all, informative_performance_all = self.get_per_sampling_performance(model, tokenizer,
-                                                                                                use_cache=False)
+        random_perf_all, informative_perf_all = self.get_per_sampling_performance(model, tokenizer,
+                                                                                  use_cache=self.reuse_last_run)
 
         if self.bootstrap:
-            random_performance = sum(random_performance_all) / len(random_performance_all)  # average
+            random_performance = sum(random_perf_all) / len(random_perf_all)  # average
         else:
-            random_performance = random_performance_all
+            random_performance = random_perf_all
 
         return random_performance
 
@@ -99,13 +101,13 @@ class RougeRandom(InformativeEvaluatorBase, ROUGE):
 class RougeInformative(RougeRandom, ROUGE):
 
     def __call__(self, model: PreTrainedModel, tokenizer: PreTrainedTokenizer, _) -> float:
-        random_performance_all, informative_performance_all = self.get_per_sampling_performance(model, tokenizer,
-                                                                                                use_cache=False)
+        random_perf_all, informative_perf_all = self.get_per_sampling_performance(model, tokenizer,
+                                                                                  use_cache=self.reuse_last_run)
 
         if self.bootstrap:
-            informative_performance = sum(informative_performance_all) / len(informative_performance_all)  # average
+            informative_performance = sum(informative_perf_all) / len(informative_perf_all)  # average
         else:
-            informative_performance = informative_performance_all
+            informative_performance = informative_perf_all
 
         return informative_performance
 
@@ -118,5 +120,4 @@ class AccuracyRandom(RougeRandom, EvaluatorBase):
 
 
 class AccuracyInformative(AccuracyRandom, RougeInformative, EvaluatorBase):
-
     pass

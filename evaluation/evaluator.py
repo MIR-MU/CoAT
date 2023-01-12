@@ -114,15 +114,14 @@ class Evaluator:
 
             logger.warning("%s: Skipped samples: %s out of total: %s" % (task, skipped, num_samples))
             logger.warning("Saving predictions for %s into %s, %s", task, cache_expected_fpath, cache_predicted_fpath)
-            if use_cache:
-                with open(cache_expected_fpath, "w") as out_f:
-                    out_f.writelines([t+"\n" for t in expected_texts])
-                with open(cache_predicted_fpath, "w") as out_f:
-                    out_f.writelines([t+"\n" for t in predicted_texts])
-                with open(cache_samples_fpath, "wb") as out_f:
-                    out_f.write(pickle.dumps(eval_sample_set_out))
-                with open(cache_inputs_fpath, "wb") as out_f:
-                    out_f.write(pickle.dumps(model_inputs))
+            with open(cache_expected_fpath, "w") as out_f:
+                out_f.writelines([t+"\n" for t in expected_texts])
+            with open(cache_predicted_fpath, "w") as out_f:
+                out_f.writelines([t+"\n" for t in predicted_texts])
+            with open(cache_samples_fpath, "wb") as out_f:
+                out_f.write(pickle.dumps(eval_sample_set_out))
+            with open(cache_inputs_fpath, "wb") as out_f:
+                out_f.write(pickle.dumps(model_inputs))
 
         return expected_texts, predicted_texts, eval_sample_set_out
 
