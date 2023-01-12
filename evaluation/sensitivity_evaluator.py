@@ -33,7 +33,7 @@ class InformativeEvaluatorBase(abc.ABC):
     def _compute_bootstrapped(self,
                               expected_all: List[str],
                               actual_all: List[str],
-                              per_round_samples: int = 50,
+                              per_round_samples: int = 100,
                               repeats: int = 200) -> List[float]:
         assert len(expected_all) == len(actual_all), "Prediction lists' length do not match"
 
