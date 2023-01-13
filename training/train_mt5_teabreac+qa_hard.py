@@ -10,7 +10,7 @@ from datasets import load_dataset
 from priming_objective import Priming
 from training.all_evaluators import info_demos_evaluators, random_demos_evaluators, eval_examples
 from training.teabreac_evaluators import tea_train, tea_val, per_concepts_eval_objective, hard_concepts, mean_concepts, \
-    easy_concepts
+    easy_concepts, tea_train_subset
 from training.all_evaluators import superglue_evaluators
 
 training_arguments = AdaptationArguments(output_dir="train_dir_teabreac+qa_info_large",
@@ -77,13 +77,13 @@ teabreac_train = Priming(lang_module,
                          max_eval_samples=eval_examples,
                          # difficulty_sample=5,  # TODO set
                          demos_selection_strategy="informative",  # TODO set
-                         texts_or_path=tea_train["question_text"],
-                         text_pair_or_path=tea_train["context_text"],
+                         texts_or_path=tea_train_subset["question_text"],
+                         text_pair_or_path=tea_train_subset["context_text"],
                          val_texts_or_path=tea_val["question_text"],
                          val_text_pair_or_path=tea_val["context_text"],
-                         labels_or_path=tea_train["answers_text"],
+                         labels_or_path=tea_train_subset["answers_text"],
                          val_labels_or_path=tea_val["answers_text"],
-                         train_question_categories=tea_train["program_modules_str"],
+                         train_question_categories=tea_train_subset["program_modules_str"],
                          val_question_categories=tea_val["program_modules_str"],
                          batch_size=1,
                          val_evaluators=val_metrics,
