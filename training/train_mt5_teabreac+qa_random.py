@@ -21,11 +21,11 @@ training_arguments = AdaptationArguments(output_dir="train_dir_teabreac+qa_info_
                                          do_eval=True,
                                          warmup_steps=1000,
                                          max_steps=300000,
-                                         gradient_accumulation_steps=30,  # TODO: set
-                                         eval_steps=200,  # TODO: set
-                                         logging_steps=10,
+                                         gradient_accumulation_steps=6,  # TODO: set
+                                         eval_steps=1000,  # TODO: set
+                                         logging_steps=50,
                                          save_steps=1000,
-                                         num_train_epochs=2,
+                                         num_train_epochs=5,
                                          evaluation_strategy="steps",
                                          save_total_limit=10,
                                          stopping_patience=30)
@@ -38,7 +38,7 @@ def _construct_priming_prompt(previous_examples: List[str], current_example: str
 # lang_module = LangModule("google/mt5-small")  # TODO set
 # lang_module = LangModule("gaussalgo/mt5-base-priming-QA_en-cs")
 # lang_module = LangModule("google/mt5-base")
-lang_module = LangModule("google/mt5-large")
+lang_module = LangModule("google/t5-large-lm-adapt")
 val_metrics = [ROUGE(**{"additional_sep_char": "▁"})]
 
 # Adversarial QA dataset & objective:
@@ -53,13 +53,14 @@ def _get_en_qa_categories(data) -> List[str]:
 
 
 qa_objective = Priming(lang_module,
+                       max_eval_samples=eval_examples,
                        # difficulty_sample=5,  # TODO set
                        demos_selection_strategy="random",  # TODO set
                        texts_or_path=qa_train["question"],
                        text_pair_or_path=qa_train["context"],
                        labels_or_path=[a["text"][0] for a in qa_train["answers"]],
                        train_question_categories=_get_en_qa_categories(qa_train),
-                       batch_size=1,
+                       batch_size=5,
                        source_lang_id="en",
                        objective_id="AQA-en")
 
@@ -75,7 +76,7 @@ qa_objective_val = Priming(lang_module,
                            val_labels_or_path=[a["text"][0] for a in qa_en["validation"]["answers"]],
                            train_question_categories=[],
                            val_question_categories=_get_en_qa_categories(qa_en["validation"]),
-                           batch_size=1,
+                           batch_size=5,
                            val_evaluators=val_metrics + superglue_evaluators +
                                           info_demos_evaluators + random_demos_evaluators,  # TODO: test reusing cache
                            source_lang_id="en",
@@ -84,13 +85,14 @@ qa_objective_val = Priming(lang_module,
 # Teabreac objectives:
 
 teabreac_train = Priming(lang_module,
+                         max_eval_samples=eval_examples,
                          # difficulty_sample=5,  # TODO set
                          demos_selection_strategy="random",  # TODO set
                          texts_or_path=tea_train_subset["question_text"],
                          text_pair_or_path=tea_train_subset["context_text"],
                          labels_or_path=tea_train_subset["answers_text"],
                          train_question_categories=tea_train_subset["program_modules_str"],
-                         batch_size=1,
+                         batch_size=5,
                          source_lang_id="en",
                          objective_id="teabreac_train-en")
 
@@ -106,7 +108,7 @@ teabreac_val = Priming(lang_module,
                        val_labels_or_path=tea_val["answers_text"],
                        train_question_categories=[],
                        val_question_categories=tea_val["program_modules_str"],
-                       batch_size=1,
+                       batch_size=5,
                        val_evaluators=val_metrics,
                        source_lang_id="en",
                        objective_id="teabreac_train-en")
