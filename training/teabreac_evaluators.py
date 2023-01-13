@@ -6,7 +6,8 @@ from adaptor.evaluators.generative import ROUGE
 from adaptor.lang_module import LangModule
 from adaptor.objectives.objective_base import Objective
 
-from training.all_evaluators import eval_examples
+# from training.all_evaluators import eval_examples
+eval_examples = 200
 from training.concepts_distances import concepts_edit_distances
 
 # teabreac training resources with validation, split to ID and OOD concepts, with different distances to ID
@@ -55,7 +56,7 @@ tea_val["context_text"] = tea_val["context_text"].apply(lambda c: c.replace(" ->
 tea_val["answers_text"] = tea_val["answers_objects"].apply(lambda ans_obj: _get_answer(ans_obj))
 tea_val["program_modules_str"] = tea_val["program_modules"].apply(lambda modules: _get_concepts(modules))
 
-tea_train = tea_train[tea_train["program_modules_str"].isin(train_concepts)]
+tea_train_subset = tea_train[tea_train["program_modules_str"].isin(train_concepts)]
 tea_val = tea_val[tea_val["program_modules_str"].isin(train_concepts)]  # subset of trained concepts
 
 tea_val = tea_val[tea_val["answers_text"].apply(lambda ans: ans is not None
