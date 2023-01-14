@@ -1,7 +1,7 @@
 import abc
 import os
 from enum import Enum
-from typing import Tuple, List, Union
+from typing import Tuple, List, Union, Optional
 from urllib.request import urlopen
 
 
@@ -12,7 +12,7 @@ class Metric(Enum):
 
 class Task(abc.ABC):
 
-    label: str
+    label: Optional[str] = None
     metric_type: int  # is Metric enum, but fails type check
     url: str
     data_file: str
@@ -40,4 +40,7 @@ class Task(abc.ABC):
             return target_fpath
 
     def __str__(self) -> str:
-        return self.__class__.__name__ + ("-%s" % str(self.template))
+        if self.label is not None:
+            return self.__class__.__name__ + "-%s-%s" % (self.label, str(self.template))
+        else:
+            return self.__class__.__name__ + ("-%s" % str(self.template))
