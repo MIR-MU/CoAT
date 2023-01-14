@@ -25,6 +25,7 @@ class SuperGLUE(Task, abc.ABC):
         super().__init__()
         template = DatasetTemplates(self.promptsource_id)
         self.prompt = template[prompts_template]
+        self.label = prompts_template
 
         if hf_dataset_identifiers is not None:
             from datasets import load_dataset
