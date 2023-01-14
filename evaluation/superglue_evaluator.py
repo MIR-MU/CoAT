@@ -1,6 +1,7 @@
 import argparse
 
 import pandas as pd
+import torch
 from promptsource.templates import DatasetTemplates
 from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
 
@@ -34,7 +35,7 @@ for model_name_or_path in args.model_names_or_paths.split(","):
                                                   # device_map=device_map,
                                                   # device_map="auto",  # TODO
                                                   # max_memory=max_memory_mapping
-                                                  )
+                                                  ).to("cuda" if torch.cuda.is_available() else "cpu")
     tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
 
     results[model_name_or_path] = {}
