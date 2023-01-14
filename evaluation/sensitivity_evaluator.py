@@ -68,7 +68,7 @@ class InformativeEvaluatorBase(abc.ABC):
                                                                    use_cache=use_cache)
         if self.bootstrap:
             informative_performance = self._compute_bootstrapped(expected, actual_informative)
-            random_performance = self._compute_bootstrapped(expected, actual_informative)
+            random_performance = self._compute_bootstrapped(expected, actual_random)
         else:
             informative_performance = self._compute(expected, actual_informative)
             random_performance = self._compute(expected, actual_random)
@@ -87,13 +87,12 @@ class RougeRandom(InformativeEvaluatorBase, ROUGE):
         return self.evaluate_str(expected, actual)
 
     def __call__(self, model: PreTrainedModel, tokenizer: PreTrainedTokenizer, _) -> float:
-        random_perf_all, informative_perf_all = self.get_per_sampling_performance(model, tokenizer,
-                                                                                  use_cache=self.reuse_last_run)
-
-        if self.bootstrap:
-            random_performance = sum(random_perf_all) / len(random_perf_all)  # average
-        else:
-            random_performance = random_perf_all
+        expected, actual, eval_set = Evaluator.collect_predictions(model, tokenizer, self.task,
+                                                                   self.num_demonstrations, self.firstn,
+                                                                   demo_selection_strategy="random",
+                                                                   max_input_length=self.max_input_length,
+                                                                   use_cache=self.reuse_last_run)
+        random_performance = self._compute(expected, actual)
 
         return random_performance
 
@@ -101,15 +100,14 @@ class RougeRandom(InformativeEvaluatorBase, ROUGE):
 class RougeInformative(RougeRandom, ROUGE):
 
     def __call__(self, model: PreTrainedModel, tokenizer: PreTrainedTokenizer, _) -> float:
-        random_perf_all, informative_perf_all = self.get_per_sampling_performance(model, tokenizer,
-                                                                                  use_cache=self.reuse_last_run)
+        expected, actual, eval_set = Evaluator.collect_predictions(model, tokenizer, self.task,
+                                                                   self.num_demonstrations, self.firstn,
+                                                                   demo_selection_strategy="cluster-random",
+                                                                   max_input_length=self.max_input_length,
+                                                                   use_cache=self.reuse_last_run)
+        info_performance = self._compute(expected, actual)
 
-        if self.bootstrap:
-            informative_performance = sum(informative_perf_all) / len(informative_perf_all)  # average
-        else:
-            informative_performance = informative_perf_all
-
-        return informative_performance
+        return info_performance
 
 
 class AccuracyRandom(RougeRandom, EvaluatorBase):
