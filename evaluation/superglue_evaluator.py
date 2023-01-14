@@ -12,9 +12,16 @@ parser = argparse.ArgumentParser()
 
 parser.add_argument("--model_names_or_paths", default="gaussalgo/mt5-base-priming-QA_en-cs", type=str,
                     help="Coma-separated list of evaluated models' identifiers")
+parser.add_argument("--use_cache", type=str, default="True", choices=('True', 'False'),
+                    help="Whether to use cached predictions, if available.")
 parser.add_argument("--firstn", type=int, default=500,
                     help="If given, a number of samples from dataset to evaluate on.")
+parser.add_argument("--metric", default="ROUGE", type=str,
+                    help="A metric to compute informative difference with. Must be one of the implemented metrics:"
+                         "'ROUGE', 'Accuracy'.")
 parser.add_argument("--max_input_length", default=None, type=int,
+                    help="Whether to collect a set of results over random subsets of predictions. Defaults to True.")
+parser.add_argument("--bootstrap", default=False, type=bool,
                     help="Whether to collect a set of results over random subsets of predictions. Defaults to True.")
 
 args = parser.parse_args()
