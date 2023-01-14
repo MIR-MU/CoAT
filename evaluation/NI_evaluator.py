@@ -3,6 +3,7 @@ import json
 import os
 
 import pandas as pd
+import torch
 from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
 
 from evaluation.sensitivity_evaluator import RougeRandom
@@ -43,7 +44,7 @@ for model_name_or_path in args.model_names_or_paths.split(","):
                                                   # device_map=device_map,
                                                   # device_map="auto",  # TODO
                                                   # max_memory=max_memory_mapping
-                                                  )
+                                                  ).to("cuda" if torch.cuda.is_available() else "cpu")
     tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
 
     results[model_name_or_path] = {}
@@ -56,7 +57,7 @@ for model_name_or_path in args.model_names_or_paths.split(","):
                                 max_input_length=args.max_input_length,
                                 firstn=args.firstn if args.firstn else None)
 
-        random_perf, info_perf = evaluator.get_per_sampling_performance(model, tokenizer, use_cache=False)
+        random_perf = evaluator(model, tokenizer, None)
         results[model_name_or_path][task_key] = random_perf
 
         print("%s\t%s\t%s" % (model_name_or_path, task_key, random_perf))
