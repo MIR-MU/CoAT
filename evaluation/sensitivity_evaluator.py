@@ -10,7 +10,7 @@ from evaluation.evaluator import Evaluator
 from evaluation.tasks.task import Task
 
 
-class InformativeEvaluatorBase(abc.ABC):
+class InformativeEvaluatorBase:
 
     def __init__(self,
                  task: Task,

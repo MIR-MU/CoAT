@@ -48,7 +48,7 @@ for model_name_or_path in args.model_names_or_paths.split(","):
 
     results[model_name_or_path] = {}
     for task_id in args.eval_tasks.split(","):
-        task_key = next(k for k in tasks_metadata.keys() if task_id in k)
+        task_key = next(k for k in tasks_metadata.keys() if task_id+"_" in k)
         task_demonstrations = tasks_metadata[task_key]["Instances"]
         task = NITask([(sample["input"], sample["output"][0]) for sample in task_demonstrations], label=task_key)
         evaluator = RougeRandom(task,
