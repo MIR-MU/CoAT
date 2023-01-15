@@ -24,6 +24,9 @@ parser.add_argument("--max_input_length", default=None, type=int,
                     help="Whether to collect a set of results over random subsets of predictions. Defaults to True.")
 parser.add_argument("--bootstrap", default=False, type=bool,
                     help="Whether to collect a set of results over random subsets of predictions. Defaults to True.")
+parser.add_argument("--tasks", default="axb,boolq,cb,wsc,copa,multirc,rte,wic,record,axg", type=str,
+                    help="Coma-separated list of SuperGLUE tasks' ids. See default values for selection.")
+
 
 args = parser.parse_args()
 
@@ -39,7 +42,11 @@ for model_name_or_path in args.model_names_or_paths.split(","):
     tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
 
     results[model_name_or_path] = {}
-    for SGLUETaskClass in all_task_classes:
+
+    selected_tasks_ids = args.tasks.split(",")
+    selected_tasks_classes = [SCls for SCls in all_task_classes
+                              if any(t_id in SCls.promptsource_id for t_id in selected_tasks_ids)]
+    for SGLUETaskClass in selected_tasks_classes:
         for template_name in DatasetTemplates(SGLUETaskClass.promptsource_id).all_template_names:
             task = SGLUETaskClass(prompts_template=template_name)
 
