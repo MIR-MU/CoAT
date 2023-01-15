@@ -118,11 +118,13 @@ class CoPA(SuperGLUE):
 
     promptsource_id: str = 'super_glue/copa'
 
-    def __init__(self, prompts_template: str = "cause_effect", split: str = "train"):
+    def __init__(self, prompts_template: str = "…As a result, C1 or C2?", split: str = "train"):
         super().__init__(prompts_template, ["super_glue", "copa"], split)
         self.metric_type = Metric.ACCURACY
 
         self.data = [(*self.prompt.apply(example), self._example_cat(example)) for example in self.dataset]  # type:ignore
+        # we found promptsource template does not work for some samples - we filter these cases
+        self.data = [tup for tup in self.data if len(tup) == 3]
 
     def _example_cat(self, example: Dict[str, str], num_categories: int = 10) -> str:
         # we use maximum token-level intersection as example category
