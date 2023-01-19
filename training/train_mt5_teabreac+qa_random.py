@@ -7,15 +7,11 @@ from adaptor.schedules import SequentialSchedule
 from adaptor.utils import AdaptationArguments, StoppingStrategy
 from datasets import load_dataset
 
-from priming_objective import Priming
-from training.all_evaluators import info_demos_evaluators, random_demos_evaluators, eval_examples
-from training.all_evaluators import superglue_evaluators
-from training.teabreac_evaluators import tea_train, tea_val, per_concepts_eval_objective, hard_concepts, mean_concepts, \
-    easy_concepts, tea_train_subset
+from training.fewshot_objective import InContextFewShot
+from training.teabreac_evaluators import tea_val, tea_train_subset
 
-training_arguments = AdaptationArguments(output_dir="train_dir_teabreac+qa_info_large",
-                                         learning_rate=2e-5,  # we set LR=2e-4 for pre-training experiments
-                                         # stopping_strategy=StoppingStrategy.ALL_OBJECTIVES_CONVERGED,
+training_arguments = AdaptationArguments(output_dir="train_dir_teabreac+qa_random_large",
+                                         learning_rate=2e-5,
                                          stopping_strategy=StoppingStrategy.ALL_OBJECTIVES_CONVERGED,
                                          do_train=True,
                                          do_eval=True,
@@ -35,9 +31,6 @@ def _construct_priming_prompt(previous_examples: List[str], current_example: str
     return " ".join(previous_examples + [current_example])
 
 
-# lang_module = LangModule("google/mt5-small")  # TODO set
-# lang_module = LangModule("gaussalgo/mt5-base-priming-QA_en-cs")
-# lang_module = LangModule("google/mt5-base")
 lang_module = LangModule("google/t5-large-lm-adapt")
 val_metrics = [ROUGE(**{"additional_sep_char": "▁"})]
 
@@ -52,69 +45,64 @@ def _get_en_qa_categories(data) -> List[str]:
             for question in data["question"]]
 
 
-qa_objective = Priming(lang_module,
-                       max_eval_samples=eval_examples,
-                       demos_selection_strategy="random",
-                       texts_or_path=qa_train["question"],
-                       text_pair_or_path=qa_train["context"],
-                       labels_or_path=[a["text"][0] for a in qa_train["answers"]],
-                       train_question_categories=_get_en_qa_categories(qa_train),
-                       batch_size=5,
-                       source_lang_id="en",
-                       objective_id="AQA-en")
+eval_examples = 200
 
-qa_objective_val = Priming(lang_module,
-                           max_eval_samples=eval_examples,
-                           demos_selection_strategy="informative",
-                           texts_or_path=[],
-                           text_pair_or_path=[],
-                           val_texts_or_path=qa_en["validation"]["question"],
-                           val_text_pair_or_path=qa_en["validation"]["context"],
-                           labels_or_path=[],
-                           val_labels_or_path=[a["text"][0] for a in qa_en["validation"]["answers"]],
-                           train_question_categories=[],
-                           val_question_categories=_get_en_qa_categories(qa_en["validation"]),
-                           batch_size=5,
-                           val_evaluators=val_metrics + superglue_evaluators +
-                                          info_demos_evaluators + random_demos_evaluators,
-                           source_lang_id="en",
-                           objective_id="AQA-en")
+
+qa_objective = InContextFewShot(lang_module,
+                                max_eval_samples=eval_examples,
+                                demos_selection_strategy="random",
+                                texts_or_path=qa_train["question"],
+                                text_pair_or_path=qa_train["context"],
+                                labels_or_path=[a["text"][0] for a in qa_train["answers"]],
+                                train_question_categories=_get_en_qa_categories(qa_train),
+                                batch_size=5,
+                                source_lang_id="en",
+                                objective_id="AQA-en")
+
+qa_objective_val = InContextFewShot(lang_module,
+                                    max_eval_samples=eval_examples,
+                                    demos_selection_strategy="informative",
+                                    texts_or_path=[],
+                                    text_pair_or_path=[],
+                                    val_texts_or_path=qa_en["validation"]["question"],
+                                    val_text_pair_or_path=qa_en["validation"]["context"],
+                                    labels_or_path=[],
+                                    val_labels_or_path=[a["text"][0] for a in qa_en["validation"]["answers"]],
+                                    train_question_categories=[],
+                                    val_question_categories=_get_en_qa_categories(qa_en["validation"]),
+                                    batch_size=5,
+                                    source_lang_id="en",
+                                    objective_id="AQA-en")
 
 # Teabreac objectives:
 
-teabreac_train = Priming(lang_module,
-                         max_eval_samples=eval_examples,
-                         demos_selection_strategy="random",
-                         texts_or_path=tea_train_subset["question_text"],
-                         text_pair_or_path=tea_train_subset["context_text"],
-                         labels_or_path=tea_train_subset["answers_text"],
-                         train_question_categories=tea_train_subset["program_modules_str"],
-                         batch_size=5,
-                         source_lang_id="en",
-                         objective_id="teabreac_train-en")
+teabreac_train = InContextFewShot(lang_module,
+                                  max_eval_samples=eval_examples,
+                                  demos_selection_strategy="random",
+                                  texts_or_path=tea_train_subset["question_text"],
+                                  text_pair_or_path=tea_train_subset["context_text"],
+                                  labels_or_path=tea_train_subset["answers_text"],
+                                  train_question_categories=tea_train_subset["program_modules_str"],
+                                  batch_size=5,
+                                  source_lang_id="en",
+                                  objective_id="teabreac_train-en")
 
-teabreac_val = Priming(lang_module,
-                       max_eval_samples=eval_examples,
-                       demos_selection_strategy="informative",
-                       texts_or_path=[],
-                       text_pair_or_path=[],
-                       val_texts_or_path=tea_val["question_text"],
-                       val_text_pair_or_path=tea_val["context_text"],
-                       labels_or_path=[],
-                       val_labels_or_path=tea_val["answers_text"],
-                       train_question_categories=[],
-                       val_question_categories=tea_val["program_modules_str"],
-                       batch_size=5,
-                       val_evaluators=val_metrics,
-                       source_lang_id="en",
-                       objective_id="teabreac_train-en")
-
-teabreac_per_concept_evals = [per_concepts_eval_objective(lang_module, tea_train, easy_concepts, label="easy"),
-                              per_concepts_eval_objective(lang_module, tea_train, mean_concepts, label="mean"),
-                              per_concepts_eval_objective(lang_module, tea_train, hard_concepts, label="hard")]
+teabreac_val = InContextFewShot(lang_module,
+                                max_eval_samples=eval_examples,
+                                demos_selection_strategy="informative",
+                                texts_or_path=[],
+                                text_pair_or_path=[],
+                                val_texts_or_path=tea_val["question_text"],
+                                val_text_pair_or_path=tea_val["context_text"],
+                                labels_or_path=[],
+                                val_labels_or_path=tea_val["answers_text"],
+                                train_question_categories=[],
+                                val_question_categories=tea_val["program_modules_str"],
+                                batch_size=5,
+                                source_lang_id="en",
+                                objective_id="teabreac_train-en")
 
 schedule = SequentialSchedule(objectives=[qa_objective, teabreac_train],
-                              extra_eval_objectives=[qa_objective_val, teabreac_val] + teabreac_per_concept_evals,
                               args=training_arguments)
 
 adapter = Adapter(lang_module, schedule, args=training_arguments)

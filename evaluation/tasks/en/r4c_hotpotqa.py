@@ -6,7 +6,7 @@ from datasets import load_dataset
 from promptsource.templates import Template, DatasetTemplates
 
 from evaluation.tasks.task import Task
-from training.priming_objective import priming_formats
+from training.fewshot_objective import priming_formats
 
 
 class R4CHotpotQATask(Task):

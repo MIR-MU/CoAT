@@ -3,7 +3,7 @@ from typing import Dict, Any
 from datasets import load_dataset
 
 from evaluation.tasks.task import Task
-from training.priming_objective import priming_formats
+from training.fewshot_objective import priming_formats
 
 
 class AdversarialQATask(Task):

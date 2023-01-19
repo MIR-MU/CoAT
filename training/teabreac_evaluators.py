@@ -2,11 +2,7 @@ from typing import List, Dict
 
 import numpy as np
 import pandas as pd
-from adaptor.evaluators.generative import ROUGE
-from adaptor.lang_module import LangModule
-from adaptor.objectives.objective_base import Objective
 
-# from training.all_evaluators import eval_examples
 eval_examples = 200
 from training.concepts_distances import concepts_edit_distances
 
@@ -62,28 +58,3 @@ tea_val = tea_val[tea_val["program_modules_str"].isin(train_concepts)]  # subset
 tea_val = tea_val[tea_val["answers_text"].apply(lambda ans: ans is not None
                                                             and isinstance(ans, str)
                                                             and len(ans.strip()) > 0)]
-
-
-def per_concepts_eval_objective(lang_module: LangModule,
-                                qa_df: pd.DataFrame,
-                                concepts: List[str],
-                                label: str) -> Objective:
-    concept_df = qa_df[qa_df["program_modules_str"].isin(concepts)]
-
-    from training.priming_objective import Priming
-    eval_objective = Priming(lang_module,
-                             max_eval_samples=eval_examples,
-                             demos_selection_strategy="informative",  # TODO set
-                             texts_or_path=[],
-                             text_pair_or_path=[],
-                             val_texts_or_path=concept_df["question_text"],
-                             val_text_pair_or_path=concept_df["context_text"],
-                             labels_or_path=[],
-                             val_labels_or_path=concept_df["answers_text"],
-                             train_question_categories=[],
-                             val_question_categories=concept_df["program_modules_str"],
-                             batch_size=1,
-                             val_evaluators=[ROUGE(**{"additional_sep_char": "▁"})],
-                             source_lang_id="en",
-                             objective_id="teabreac_train-%s" % label)
-    return eval_objective

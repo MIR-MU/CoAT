@@ -9,11 +9,10 @@ from transformers import BatchEncoding
 logger = logging.getLogger()
 
 priming_formats = {
-    "QA": {"cs": "Otázka: %s Kontext: %s Odpověď:",
-           "en": "Question: %s Context: %s Answer:"}}
+    "QA": {"en": "Question: %s Context: %s Answer:"}}
 
 
-class Priming(Sequence2Sequence):
+class InContextFewShot(Sequence2Sequence):
 
     def __init__(self, *args,
                  train_question_categories: Iterable[str],
@@ -49,6 +48,9 @@ class Priming(Sequence2Sequence):
         return " ".join(primed_demonstrations) + " " + prompt
 
     def forced_generation_score(self, input_texts: List[str], forced_output: str) -> torch.FloatTensor:
+        """
+        Computes the aggregate force generation score used as a proxy for demonstration 'difficulty'
+        """
         inputs = self.tokenizer(input_texts, return_tensors="pt", padding="longest", truncation=True)
         inputs = inputs.to(self.compatible_head_model.device)
 
@@ -72,6 +74,9 @@ class Priming(Sequence2Sequence):
                                   next_demo_cands: List[str],
                                   predict_prompt: str,
                                   predicted_answer: str) -> int:
+        """
+        Returns the index of the most difficult demonstration within selected_demos collection.
+        """
         with torch.no_grad():
             difficulties = torch.empty(0, device=self.compatible_head_model.device, dtype=torch.float)
 
@@ -90,6 +95,8 @@ class Priming(Sequence2Sequence):
 
     def _get_inputs_iterator(self, split: str) -> Iterable[Union[BatchEncoding, Dict[str, torch.Tensor]]]:
         """
+        Copied and updated implementation from adaptor.objectives.seq2seq.SequentialMixin
+        ------------------------
         Creates a default iterator over encodings with aligned input and output texts.
         :param split: Data split. `train` or `eval`.
         :return: Iterator of model input encodings.

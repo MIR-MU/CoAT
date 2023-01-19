@@ -4,20 +4,24 @@ Training and evaluation testbed for few-shot learners aimed to learn concepts of
 
 ## Conceptual Few-shot Evaluation
 
-To run the Conceptual few-shot evaluation on a selected model, run `evaluate_sensitivity_bulk.py` script:
+To extract the concepts from explanations as proposed in the paper, 
+and run the Conceptual few-shot evaluation on a selected model, 
+run `conceptual_fewshot_evaluator.py` script:
 
 ```shell
 cd {this_repo}
 export PYTHONPATH="${PYTHONPATH}:$(pwd)"
 pip install -r evaluation/requirements.txt
-CUDA_VISIBLE_DEVICES=0 python evaluation/evaluate_sensitivity_bulk.py \
+spacy download en_core_web_sm  # For OpenBookQA concepts extraction
+
+CUDA_VISIBLE_DEVICES=0 python evaluation/conceptual_fewshot_evaluator.py \
     --model_names_or_paths authoranonymous321/mt5_large-teabreac-AQA_hard \
-    --bootstrapping False \
+    --bootstrap False \
     --metric ROUGE \
     --dataset_ids glue/mnli,openbookqa/additional,hotpot_qa/fullwiki,worldtree \
     --firstn 100
 ```
-All resources should be resolved automatically.
+All resources and concepts extractions should be resolved automatically.
 
 If you evaluate using `--bootstrapping True`, collect the stdout to a file and analyse the results using [this notebook](analyses/conceptual_few_shot_eval_viz.ipynb).
 
@@ -30,7 +34,7 @@ To reproduce our evaluation on SuperGLUE, run the following:
 ```shell
 cd {this_repo}
 export PYTHONPATH="${PYTHONPATH}:$(pwd)"
-CUDA_VISIBLE_DEVICES=0 python evaluation/evaluate_sensitivity_bulk.py \
+CUDA_VISIBLE_DEVICES=0 python evaluation/superglue_evaluator.py \
     --model_names_or_paths authoranonymous321/mt5_large-teabreac-AQA_hard,allenai/tk-instruct-large-def-pos \
     --metric Accuracy \
     --tasks axb,boolq,cb,wsc,copa,multirc,rte,wic,record,axg
@@ -47,11 +51,14 @@ export PYTHONPATH="${PYTHONPATH}:$(pwd)"
 pip install -r training/requirements.txt
 pip install -r evaluation/requirements.txt
 
-CUDA_VISIBLE_DEVICES=0 python training/train_mt5teabreac+qa_hard.py
+CUDA_VISIBLE_DEVICES=0 python training/train_mt5_teabreac+qa_hard.py
 ```
 
 The script intentionally contains all parameters fixed, but if you need to change something,
 e.g. due to the environment restrictions, do not hesitate to adjust `AdaptationArguments` or evaluations within the code.
+
+The training scripts include evaluations on SuperGLUE and various TeaBReaC concepts.
+
 
 ## Baseline: Random Demonstrations Selection Training
 
