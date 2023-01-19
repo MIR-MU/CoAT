@@ -31,7 +31,7 @@ def _construct_priming_prompt(previous_examples: List[str], current_example: str
     return " ".join(previous_examples + [current_example])
 
 
-lang_module = LangModule("google/t5-large-lm-adapt")
+lang_module = LangModule("google/mt5-large")
 val_metrics = [ROUGE(**{"additional_sep_char": "▁"})]
 
 # Adversarial QA dataset & objective:
@@ -102,7 +102,7 @@ teabreac_val = InContextFewShot(lang_module,
                                 source_lang_id="en",
                                 objective_id="teabreac_train-en")
 
-schedule = SequentialSchedule(objectives=[qa_objective, teabreac_train],
+schedule = SequentialSchedule(objectives=[teabreac_train, qa_objective],
                               args=training_arguments)
 
 adapter = Adapter(lang_module, schedule, args=training_arguments)

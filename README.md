@@ -1,6 +1,7 @@
 # Conceptual Few-Shot Evaluation & Training
 
-Training and evaluation testbed for few-shot learners aimed to learn concepts of unseen tasks
+Training and evaluation sources to assess few-shot learners' ability 
+to utlize **informative** concepts in prediction.
 
 ## Conceptual Few-shot Evaluation
 
@@ -51,6 +52,10 @@ export PYTHONPATH="${PYTHONPATH}:$(pwd)"
 pip install -r training/requirements.txt
 pip install -r evaluation/requirements.txt
 
+cd training
+./download_teaberac_data.sh
+cd ..
+
 CUDA_VISIBLE_DEVICES=0 python training/train_mt5_teabreac+qa_hard.py
 ```
 
@@ -60,13 +65,10 @@ e.g. due to the environment restrictions, do not hesitate to adjust `AdaptationA
 The training scripts include evaluations on SuperGLUE and various TeaBReaC concepts.
 
 
-## Baseline: Random Demonstrations Selection Training
+### Baseline: Random Demonstrations Selection Training
+
+In the sequence above, replace the python script path with `train_mt5_teabreac+qa_random.py`.
 
 ```shell
-cd {this_repo}
-export PYTHONPATH="${PYTHONPATH}:$(pwd)"
-pip install -r training/requirements.txt
-pip install -r evaluation/requirements.txt
-
-CUDA_VISIBLE_DEVICES=0 python training/train_mt5teabreac+qa_random.py
+CUDA_VISIBLE_DEVICES=0 python training/train_mt5_teabreac+qa_random.py
 ```
