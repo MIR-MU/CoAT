@@ -4,9 +4,7 @@ promptsource
 spacy
 pandas
 accelerate
-bert_score
-rouge_score
-sacrebleu
+adaptor[generative==0.2.0
 sentencepiece
 fairseq
 jupyter

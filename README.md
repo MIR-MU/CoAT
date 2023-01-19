@@ -10,11 +10,11 @@ To run the Conceptual few-shot evaluation on a selected model, run `evaluate_sen
 cd {this_repo}
 export PYTHONPATH="${PYTHONPATH}:$(pwd)"
 pip install -r evaluation/requirements.txt
-CUDA_VISIBLE_DEVICES=0 python evaluation/evaluate_sensitivity_bulk.py \ 
+CUDA_VISIBLE_DEVICES=0 python evaluation/evaluate_sensitivity_bulk.py \
     --model_names_or_paths authoranonymous321/mt5_large-teabreac-AQA_hard \
-    --bootstrapping False
-    --metric ROUGE
-    --dataset_ids glue/mnli,openbookqa/additional,hotpot_qa/fullwiki,worldtree
+    --bootstrapping False \
+    --metric ROUGE \
+    --dataset_ids glue/mnli,openbookqa/additional,hotpot_qa/fullwiki,worldtree \
     --firstn 100
 ```
 All resources should be resolved automatically.
@@ -30,9 +30,9 @@ To reproduce our evaluation on SuperGLUE, run the following:
 ```shell
 cd {this_repo}
 export PYTHONPATH="${PYTHONPATH}:$(pwd)"
-CUDA_VISIBLE_DEVICES=0 python evaluation/evaluate_sensitivity_bulk.py \ 
+CUDA_VISIBLE_DEVICES=0 python evaluation/evaluate_sensitivity_bulk.py \
     --model_names_or_paths authoranonymous321/mt5_large-teabreac-AQA_hard,allenai/tk-instruct-large-def-pos \
-    --metric Accuracy
+    --metric Accuracy \
     --tasks axb,boolq,cb,wsc,copa,multirc,rte,wic,record,axg
 ```
 All resources should be resolved automatically.

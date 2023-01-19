@@ -1,15 +1,11 @@
-import torch
-from promptsource.templates import DatasetTemplates
-from transformers import AutoModelForSeq2SeqLM, AutoTokenizer, AutoModelForCausalLM
-
-from evaluation.sensitivity_evaluator import RougeInformative, AccuracyInformative
-
-# TODO: aren't SQuAD examples more informative?
-# dataset = load_dataset("squad")
-from evaluation.tasks.en.glue_diagnostics import GLUEDiagnostics
-# from evaluation.tasks.en.qa import AdversarialQATask
 import argparse
 
+from promptsource.templates import DatasetTemplates
+from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
+
+from evaluation.openai_api_model import GPT3API
+from evaluation.sensitivity_evaluator import RougeInformative, AccuracyInformative
+from evaluation.tasks.en.glue_diagnostics import GLUEDiagnostics
 from evaluation.tasks.en.openbookqa import OpenBookQATask
 from evaluation.tasks.en.r4c_hotpotqa import R4CHotpotQATask
 from evaluation.tasks.en.worldtree_qa import WorldTreeQA
@@ -18,6 +14,10 @@ parser = argparse.ArgumentParser()
 
 parser.add_argument("--model_names_or_paths", default="gaussalgo/mt5-base-priming-QA_en-cs", type=str,
                     help="Coma-separated list of evaluated models' identifiers")
+parser.add_argument("--openai_api_key", type=str, default="None",
+                    help="OpenAI API key used for requesting GPT-3* models.")
+parser.add_argument("--use_cache", type=str, default="True", choices=('True', 'False'),
+                    help="Whether to use cached predictions, if available.")
 parser.add_argument("--dataset_ids", default="glue/mnli", type=str,
                     help="Coma-separated list of evaluation datasets. Must be one of the implemented datasets: "
                          "'glue/mnli', 'openbookqa/additional', 'hotpot_qa/fullwiki', 'worldtree'")
@@ -44,12 +44,18 @@ max_memory_mapping = {0: "45GB", 1: "65GB", 2: "65GB", 3: "55GB"}
 
 for model_name_or_path in args.model_names_or_paths.split(","):
     results[model_name_or_path] = {}
-    model = AutoModelForSeq2SeqLM.from_pretrained(model_name_or_path,
-                                                      # device_map=device_map,
-                                                      device_map="auto",
-                                                      # max_memory=max_memory_mapping
-                                                      )
-    tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
+    if "davinci" in model_name_or_path:
+        # OpenAI GPT3 API requests
+        tokenizer = AutoTokenizer.from_pretrained("t5-large")
+        model = GPT3API(api_key=args.openai_api_key, openai_model_id=model_name_or_path, tokenizer=tokenizer,
+                        test=True if args.openai_api_key == "None" else False)
+    else:
+        model = AutoModelForSeq2SeqLM.from_pretrained(model_name_or_path,
+                                                          # device_map=device_map,
+                                                          device_map="auto",
+                                                          # max_memory=max_memory_mapping
+                                                          )
+        tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
 
     for dataset_id in args.dataset_ids.split(","):
         # eval templates resolution
