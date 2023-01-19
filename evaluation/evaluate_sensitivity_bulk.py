@@ -29,9 +29,15 @@ parser.add_argument("--metric", default="ROUGE", type=str,
 parser.add_argument("--bootstrap", default=True, type=bool,
                     help="Whether to collect a set of results over random subsets of predictions. Defaults to True.")
 parser.add_argument("--max_input_length", default=None, type=int,
-                    help="Whether to collect a set of results over random subsets of predictions. Defaults to True.")
+                    help="Maximum in-context input size, in a number of space-separated words.")
+parser.add_argument("--num_demonstrations", default=3, type=int,
+                    help="Number of in-context task demonstrations to prepend.")
+parser.add_argument("--firstn", type=int, default=0,
+                    help="If given, a number of samples from dataset to evaluate on.")
 
 args = parser.parse_args()
+args.use_cache = args.use_cache == "True"
+args.bootstrap = args.bootstrap == "True"
 results = {}
 
 max_memory_mapping = {0: "45GB", 1: "65GB", 2: "65GB", 3: "55GB"}
@@ -74,14 +80,22 @@ for model_name_or_path in args.model_names_or_paths.split(","):
 
             # evaluation metric resolution
             if args.metric == "ROUGE":
-                evaluator = RougeInformative(task, bootstrap=args.bootstrap, max_input_length=args.max_input_length)
+                evaluator = RougeInformative(task,
+                                             bootstrap=args.bootstrap,
+                                             max_input_length=args.max_input_length,
+                                             firstn=args.firstn if args.firstn else None,
+                                             num_demonstrations=args.num_demonstrations)
             elif args.metric == "Accuracy":
-                evaluator = AccuracyInformative(task, bootstrap=args.bootstrap, max_input_length=args.max_input_length)
+                evaluator = AccuracyInformative(task,
+                                                bootstrap=args.bootstrap,
+                                                max_input_length=args.max_input_length,
+                                                num_demonstrations=args.num_demonstrations)
             else:
                 raise ValueError("Unknown metric: %s" % args.metric)
 
             # a list of results if args.bootstrap, a single prediction otherwise
-            random_selection_perf, info_selection_perf = evaluator.get_per_sampling_performance(model, tokenizer)
+            random_selection_perf, info_selection_perf = evaluator.get_per_sampling_performance(model, tokenizer,
+                                                                                                args.use_cache)
             if not args.bootstrap:
                 # unify the format, so we have a single result formatting
                 random_selection_perf, info_selection_perf = [random_selection_perf], [info_selection_perf]

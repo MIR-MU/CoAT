@@ -92,7 +92,7 @@ class Evaluator:
                         continue
                     model_input_text = construct_sample(demonstrations, sample)
                     if max_input_length is not None and len(model_input_text.split()) > max_input_length:
-                        logger.warning("Skipping input containing %s words.")
+                        logger.warning("Skipping input containing %s words." % len(model_input_text.split()))
                         skipped += 1
                         continue
 

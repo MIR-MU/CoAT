@@ -29,6 +29,7 @@ parser.add_argument("--tasks", default="axb,boolq,cb,wsc,copa,multirc,rte,wic,re
 
 
 args = parser.parse_args()
+args.use_cache = args.use_cache == "True"
 
 results = {}
 

@@ -4,3 +4,9 @@ promptsource
 spacy
 pandas
 accelerate
+bert_score
+rouge_score
+sacrebleu
+sentencepiece
+fairseq
+jupyter

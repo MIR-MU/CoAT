@@ -3,15 +3,15 @@ from typing import List
 from adaptor.adapter import Adapter
 from adaptor.evaluators.generative import ROUGE
 from adaptor.lang_module import LangModule
-from adaptor.schedules import ParallelSchedule
+from adaptor.schedules import SequentialSchedule
 from adaptor.utils import AdaptationArguments, StoppingStrategy
 from datasets import load_dataset
 
 from priming_objective import Priming
 from training.all_evaluators import info_demos_evaluators, random_demos_evaluators, eval_examples
+from training.all_evaluators import superglue_evaluators
 from training.teabreac_evaluators import tea_train, tea_val, per_concepts_eval_objective, hard_concepts, mean_concepts, \
     easy_concepts, tea_train_subset
-from training.all_evaluators import superglue_evaluators
 
 training_arguments = AdaptationArguments(output_dir="train_dir_teabreac+qa_info_large",
                                          learning_rate=2e-5,  # we set LR=2e-4 for pre-training experiments
@@ -21,8 +21,8 @@ training_arguments = AdaptationArguments(output_dir="train_dir_teabreac+qa_info_
                                          do_eval=True,
                                          warmup_steps=1000,
                                          max_steps=300000,
-                                         gradient_accumulation_steps=6,  # TODO: set
-                                         eval_steps=1000,  # TODO: set
+                                         gradient_accumulation_steps=6,
+                                         eval_steps=1000,
                                          logging_steps=50,
                                          save_steps=1000,
                                          num_train_epochs=5,
@@ -54,8 +54,7 @@ def _get_en_qa_categories(data) -> List[str]:
 
 qa_objective = Priming(lang_module,
                        max_eval_samples=eval_examples,
-                       # difficulty_sample=5,  # TODO set
-                       demos_selection_strategy="random",  # TODO set
+                       demos_selection_strategy="random",
                        texts_or_path=qa_train["question"],
                        text_pair_or_path=qa_train["context"],
                        labels_or_path=[a["text"][0] for a in qa_train["answers"]],
@@ -66,8 +65,7 @@ qa_objective = Priming(lang_module,
 
 qa_objective_val = Priming(lang_module,
                            max_eval_samples=eval_examples,
-                           # difficulty_sample=5,  # TODO set
-                           demos_selection_strategy="informative",  # TODO set
+                           demos_selection_strategy="informative",
                            texts_or_path=[],
                            text_pair_or_path=[],
                            val_texts_or_path=qa_en["validation"]["question"],
@@ -78,7 +76,7 @@ qa_objective_val = Priming(lang_module,
                            val_question_categories=_get_en_qa_categories(qa_en["validation"]),
                            batch_size=5,
                            val_evaluators=val_metrics + superglue_evaluators +
-                                          info_demos_evaluators + random_demos_evaluators,  # TODO: test reusing cache
+                                          info_demos_evaluators + random_demos_evaluators,
                            source_lang_id="en",
                            objective_id="AQA-en")
 
@@ -86,8 +84,7 @@ qa_objective_val = Priming(lang_module,
 
 teabreac_train = Priming(lang_module,
                          max_eval_samples=eval_examples,
-                         # difficulty_sample=5,  # TODO set
-                         demos_selection_strategy="random",  # TODO set
+                         demos_selection_strategy="random",
                          texts_or_path=tea_train_subset["question_text"],
                          text_pair_or_path=tea_train_subset["context_text"],
                          labels_or_path=tea_train_subset["answers_text"],
@@ -98,8 +95,7 @@ teabreac_train = Priming(lang_module,
 
 teabreac_val = Priming(lang_module,
                        max_eval_samples=eval_examples,
-                       # difficulty_sample=5,  # TODO set
-                       demos_selection_strategy="informative",  # TODO set
+                       demos_selection_strategy="informative",
                        texts_or_path=[],
                        text_pair_or_path=[],
                        val_texts_or_path=tea_val["question_text"],
@@ -117,9 +113,9 @@ teabreac_per_concept_evals = [per_concepts_eval_objective(lang_module, tea_train
                               per_concepts_eval_objective(lang_module, tea_train, mean_concepts, label="mean"),
                               per_concepts_eval_objective(lang_module, tea_train, hard_concepts, label="hard")]
 
-schedule = ParallelSchedule(objectives=[qa_objective, teabreac_train],
-                            extra_eval_objectives=[qa_objective_val, teabreac_val] + teabreac_per_concept_evals,
-                            args=training_arguments)
+schedule = SequentialSchedule(objectives=[qa_objective, teabreac_train],
+                              extra_eval_objectives=[qa_objective_val, teabreac_val] + teabreac_per_concept_evals,
+                              args=training_arguments)
 
 adapter = Adapter(lang_module, schedule, args=training_arguments)
 adapter.train()
