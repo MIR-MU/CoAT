@@ -72,3 +72,34 @@ In the sequence above, replace the python script path with `train_mt5_teabreac+q
 ```shell
 CUDA_VISIBLE_DEVICES=0 python training/train_mt5_teabreac+qa_random.py
 ```
+
+### Citation
+
+If you use Conceptual Few-shot Evaluation in scientific work, please cite this work as follows:
+
+```bibtex
+@inproceedings{stefanik2023incontext,
+               author = {{{\v{S}}tef{\'a}nik}, Michal and {Kadl{\v{c}}{\'\i}k}, Marek},
+               title={Can In-context Learners Learn a Reasoning Concept from Demonstrations?}, 
+               booktitle = {Proceedings of ACL 2023: Natural Language Reasoning and Structured Explanations (NLRSE)},
+               publisher = {ACL},
+               numpages = {6},
+               year={2023},
+               url = {https://arxiv.org/abs/2212.01692},
+}
+```
+
+If you'd like to reference Concept-Aware Training, please cite other paper that introduces it:
+
+```bibtex
+@article{stefanik2023conceptaware,
+         title={Concept-aware Training Improves In-context Learning Ability of Language Models}, 
+         author={{{\v{S}}tef{\'a}nik}, Michal and {Kadl{\v{c}}{\'\i}k}, Marek},
+         year={2023},
+         eprint={2305.13775},
+         archivePrefix={arXiv},
+         primaryClass={cs.CL},
+         url = {https://arxiv.org/abs/2305.13775},
+}
+```
+
